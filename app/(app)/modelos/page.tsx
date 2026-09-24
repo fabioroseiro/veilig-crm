@@ -14,6 +14,7 @@ export default async function Modelos() {
     `SELECT g.nome, g.origem, g.segmento, c.nome AS contato FROM grupo g LEFT JOIN contato c ON c.grupo_id=g.id AND c.principal
       WHERE g.temperatura='frio' ORDER BY g.num_lojas DESC LIMIT 1`);
   const dados = { nome: ex?.contato ?? "Fulano", grupo: ex?.nome ?? "Grupo Exemplo", origem: ex?.origem, segmento: ex?.segmento };
+  const rem = await q1<{ valor: { nome: string; whatsapp?: string } }>("SELECT valor FROM config WHERE chave='remetente'");
 
   return (
     <>
@@ -37,7 +38,7 @@ export default async function Modelos() {
               <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, background: "#fff" }}>
                 <div style={{ fontWeight: 700, marginBottom: 10 }}>{m.chave === "frio_2" ? "Re: (assunto do toque 1)" : preencherTexto(m.assunto, dados)}</div>
                 <div style={{ whiteSpace: "pre-wrap", fontSize: 14 }}>{preencherTexto(m.corpo, dados)}</div>
-                <div style={{ marginTop: 14, fontSize: 14 }}>Natália Artale<br />Veilig · veilig.com.br</div>
+                <div style={{ marginTop: 14, fontSize: 14 }}>{rem?.valor.nome ?? "Natália Artale"}<br />Veilig · veilig.com.br{rem?.valor.whatsapp && <><br />WhatsApp {rem.valor.whatsapp}</>}</div>
                 <div className="muted" style={{ marginTop: 14, fontSize: 12 }}>Se não quiser receber novas mensagens, responda &quot;não&quot; ou clique aqui.</div>
               </div>
               <FormAcao acao={async () => { "use server"; return enviarTeste(m.chave); }}>

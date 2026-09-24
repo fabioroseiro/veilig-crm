@@ -50,13 +50,21 @@ export function urlApp() {
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]!);
 const linkar = (s: string) => s.replace(/\b(veilig\.com\.br[^\s,)]*)/g, '<a href="https://$1">$1</a>');
 
-export async function montarEmail(corpo: string, remetenteNome: string, contatoId: string | null) {
+export type Remetente = { email: string; nome: string; whatsapp?: string | null };
+
+/** "(11) 98640-5185" → "5511986405185" para o link do WhatsApp. */
+const zapLink = (tel: string) => "55" + tel.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+
+export async function montarEmail(corpo: string, remetente: Remetente, contatoId: string | null) {
+  const remetenteNome = remetente.nome;
   const linkSair = contatoId ? `${urlApp()}/sair/${await tokenSair(contatoId)}` : `${urlApp()}/sair/teste`;
-  const assinatura = `${remetenteNome}\nVeilig · veilig.com.br`;
+  const zap = remetente.whatsapp ? `WhatsApp ${remetente.whatsapp}` : "";
+  const assinatura = `${remetenteNome}\nVeilig · veilig.com.br${zap ? `\n${zap}` : ""}`;
   const texto = `${corpo}\n\n${assinatura}\n\n--\nSe não quiser receber novas mensagens, responda "não" ou acesse: ${linkSair}`;
   const paragrafos = corpo.split(/\n{2,}/).map((p) => `<p style="margin:0 0 14px">${linkar(esc(p)).replace(/\n/g, "<br>")}</p>`).join("");
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;font-size:14px;line-height:1.55;color:#1d2b2f">${paragrafos}` +
-    `<p style="margin:18px 0 0">${esc(remetenteNome)}<br>Veilig · <a href="https://veilig.com.br">veilig.com.br</a></p>` +
+    `<p style="margin:18px 0 0">${esc(remetenteNome)}<br>Veilig · <a href="https://veilig.com.br">veilig.com.br</a>` +
+    (remetente.whatsapp ? `<br>WhatsApp <a href="https://wa.me/${zapLink(remetente.whatsapp)}">${esc(remetente.whatsapp)}</a>` : "") + `</p>` +
     `<p style="margin:24px 0 0;font-size:12px;color:#6b7c80">Se não quiser receber novas mensagens, responda "não" ou <a href="${linkSair}" style="color:#6b7c80">clique aqui</a>.</p></div>`;
   return { texto, html, linkSair };
 }

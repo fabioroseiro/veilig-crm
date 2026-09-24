@@ -3,7 +3,7 @@ import { revalidatePath } from "next/cache";
 import { exigirUsuario } from "./auth";
 import { q, q1 } from "./db";
 import * as K from "./cadencia";
-import { montarEmail, preencherTexto, camposFaltando } from "./mensagem";
+import { montarEmail, preencherTexto, camposFaltando, type Remetente } from "./mensagem";
 import { transportador, envioReal } from "./correio";
 
 const telas = () => { revalidatePath("/cadencias"); revalidatePath("/modelos"); revalidatePath("/hoje"); revalidatePath("/funil"); };
@@ -78,9 +78,9 @@ export async function enviarTeste(chave: string) {
     `SELECT g.nome, g.origem, g.segmento, c.nome AS contato FROM grupo g LEFT JOIN contato c ON c.grupo_id=g.id AND c.principal
       WHERE g.temperatura='frio' ORDER BY g.num_lojas DESC LIMIT 1`);
   const dados = { nome: ex?.contato ?? "Fulano", grupo: ex?.nome ?? "Grupo Exemplo", origem: ex?.origem, segmento: ex?.segmento };
-  const rem = await q1<{ valor: { email: string; nome: string } }>("SELECT valor FROM config WHERE chave='remetente'");
-  const remetente = rem?.valor ?? { email: "natalia@vendas.veilig.com.br", nome: "Natália Artale" };
-  const { texto, html } = await montarEmail(preencherTexto(m.corpo, dados), remetente.nome, null);
+  const rem = await q1<{ valor: Remetente }>("SELECT valor FROM config WHERE chave='remetente'");
+  const remetente: Remetente = rem?.valor ?? { email: "natalia@vendas.veilig.com.br", nome: "Natália Artale" };
+  const { texto, html } = await montarEmail(preencherTexto(m.corpo, dados), remetente, null);
   try {
     await transportador(remetente.email).sendMail({
       from: { name: remetente.nome, address: remetente.email }, to: u.email,

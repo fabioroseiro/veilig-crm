@@ -7,7 +7,7 @@ import { camposFaltando, montarEmail, preencherTexto, urlApp } from "./mensagem"
 import { caixa, envioReal, transportador } from "./correio";
 import { hojeISO, porte as calcPorte, somaDias } from "./regras";
 
-type Remetente = { email: string; nome: string };
+import type { Remetente } from "./mensagem";
 
 async function cfg() {
   const linhas = await q<{ chave: string; valor: unknown }>("SELECT chave, valor FROM config WHERE chave IN ('envio_ativo','limite_diario','remetente')");
@@ -196,7 +196,7 @@ export async function enviarFila(forcarHorario = false) {
       await q("UPDATE envio SET status='cancelado', erro='Cadência parada ou e-mail inválido antes do envio' WHERE id=$1", [e.id]);
       continue;
     }
-    const { texto, html, linkSair } = await montarEmail(e.corpo, c.remetente.nome, e.contato_id);
+    const { texto, html, linkSair } = await montarEmail(e.corpo, c.remetente, e.contato_id);
     const messageId = `<${randomUUID()}@${c.remetente.email.split("@")[1]}>`;
     try {
       await t.sendMail({
