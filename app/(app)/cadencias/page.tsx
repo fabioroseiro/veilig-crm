@@ -28,6 +28,22 @@ export default async function Cadencias() {
             (SELECT count(*) FROM envio WHERE status='devolvido') AS devolvidos,
             (SELECT count(*) FROM envio WHERE status='erro') AS erros`);
   const pendentes = await q1<{ n: string }>("SELECT count(*) AS n FROM modelo_email WHERE NOT aprovado");
+
+  // Descadastros: quem pediu para sair, como pediu e qual foi o último e-mail que recebeu antes disso.
+  const saidas = await q<{ grupo_id: string; nome: string; contato: string | null; email: string; quando: string | null; como: string; toque: number | null }>(
+    `SELECT g.id AS grupo_id, g.nome, c.nome AS contato, c.email,
+            to_char(a.em AT TIME ZONE 'America/Sao_Paulo','DD/MM/YYYY HH24:MI') AS quando,
+            CASE WHEN a.resumo ILIKE '%link%' THEN 'Link do e-mail' WHEN a.resumo IS NULL THEN 'Não registrado' ELSE 'Respondeu pedindo para sair' END AS como,
+            (SELECT e.toque FROM envio e WHERE e.contato_id = c.id AND e.status IN ('enviado','simulado')
+               AND (a.em IS NULL OR e.enviado_em <= a.em) ORDER BY e.enviado_em DESC LIMIT 1) AS toque
+       FROM contato c JOIN grupo g ON g.id = c.grupo_id
+       LEFT JOIN LATERAL (SELECT em, resumo FROM atividade WHERE grupo_id = g.id AND tipo = 'email'
+                            AND resumo ILIKE '%não receber e-mails%' ORDER BY em DESC LIMIT 1) a ON true
+      WHERE c.email_status = 'descadastrado'
+      ORDER BY a.em DESC NULLS LAST LIMIT 200`);
+  const alcancados = await q1<{ n: string }>("SELECT count(DISTINCT contato_id) AS n FROM envio WHERE status IN ('enviado','simulado')");
+  const taxaSaida = Number(alcancados?.n) ? (saidas.length / Number(alcancados?.n)) * 100 : 0;
+  const porToque = saidas.reduce<Record<string, number>>((m, x) => { const k = x.toque ? String(x.toque) : "?"; m[k] = (m[k] || 0) + 1; return m; }, {});
   const caixa = await q1<{ lido_em: string | null }>("SELECT lido_em FROM caixa_estado WHERE caixa=$1", [remetente]);
 
   const elegiveis = await q<{ id: string; nome: string; num_lojas: number; contato: string | null; email: string; origem: string | null }>(
@@ -76,10 +92,11 @@ export default async function Cadencias() {
         </FormAcao>
       </div>
 
-      <div className="grade g4" style={{ marginBottom: 16 }}>
+      <div className="grade" style={{ marginBottom: 16, gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))" }}>
         <div className="caixa kpi"><div className="k">Cadências ativas</div><div className="v num">{kpi.ativas}</div><div className="k">{kpi.pausa} em pausa</div></div>
         <div className="caixa kpi"><div className="k">E-mails hoje</div><div className="v num">{kpi.hoje} / {limite}</div><div className="k">{kpi.fila} na fila</div></div>
         <div className="caixa kpi"><div className="k">Respostas (7 dias)</div><div className="v num">{kpi.resp7}</div></div>
+        <div className="caixa kpi"><div className="k">Descadastros</div><div className={`v num ${taxaSaida >= 2 ? "alerta" : ""}`}>{saidas.length}</div><div className="k">{taxaSaida.toFixed(1).replace(".", ",")}% de quem recebeu e-mail</div></div>
         <div className="caixa kpi"><div className="k">Voltaram / erros</div><div className={`v num ${Number(kpi.devolvidos) + Number(kpi.erros) ? "alerta" : ""}`}>{kpi.devolvidos} / {kpi.erros}</div></div>
       </div>
 
@@ -110,6 +127,32 @@ export default async function Cadencias() {
             })}</tbody>
           </table>
         </div>
+      </div>
+
+      <div className="caixa" style={{ marginBottom: 16 }}>
+        <h2>Pediram para não receber e-mails ({saidas.length})</h2>
+        {saidas.length === 0 ? <p className="muted">Ninguém se descadastrou até agora.</p> : (
+          <>
+            <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>
+              Último e-mail recebido antes de sair: {Object.entries(porToque).sort((a, b) => Number(a[0]) - Number(b[0])).map(([t, n]) => `toque ${t}: ${n}`).join(" · ")}.
+              Uma concentração num mesmo toque indica que aquele texto merece revisão. Acima de 2% de quem recebeu, vale olhar com atenção.
+            </p>
+            <div className="rolagem" style={{ maxHeight: 360, overflowY: "auto" }}>
+              <table>
+                <thead><tr><th>Quando</th><th>Grupo</th><th>Contato</th><th>Como pediu</th><th>Último toque recebido</th></tr></thead>
+                <tbody>{saidas.map((x) => (
+                  <tr key={x.grupo_id + x.email}>
+                    <td className="num">{x.quando ?? "—"}</td>
+                    <td><Link href={`/grupos/${x.grupo_id}`}>{x.nome}</Link></td>
+                    <td style={{ fontSize: 13 }}>{x.contato ?? "—"}<div className="muted">{x.email}</div></td>
+                    <td>{x.como}</td>
+                    <td>{x.toque ? `Toque ${x.toque}` : "—"}</td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="caixa">
