@@ -8,10 +8,16 @@ export const dynamic = "force-dynamic";
 export default async function Sair({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<{ ok?: string }> }) {
   const { token } = await params;
   const feito = (await searchParams).ok === "1";
-  const id = await lerTokenSair(token);
+  // "teste" é o link dos e-mails de teste: mostra a tela real, sem alterar nada.
+  const exemplo = token === "teste";
+  const id = exemplo ? "exemplo" : await lerTokenSair(token);
 
   async function confirmar() {
     "use server";
+    if (token === "teste") {
+      const { redirect } = await import("next/navigation");
+      redirect("/sair/teste?ok=1");
+    }
     const cid = await lerTokenSair(token);
     if (!cid) return;
     const c = await q1<{ grupo_id: string; email_status: string }>("SELECT grupo_id, email_status FROM contato WHERE id=$1", [cid]);
@@ -29,6 +35,7 @@ export default async function Sair({ params, searchParams }: { params: Promise<{
     <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 20 }}>
       <div className="caixa" style={{ maxWidth: 460, textAlign: "center", padding: 30 }}>
         <img src="/logo.png" alt="Veilig" width={40} height={40} />
+        {exemplo && <div className="aviso atencao" style={{ marginTop: 12 }}>Exemplo do e-mail de teste: nada é alterado.</div>}
         {!id ? <p>Link inválido ou incompleto.</p> : feito ? (
           <><h1>Pronto</h1><p className="muted">Você não vai mais receber e-mails da Veilig sobre este assunto.</p></>
         ) : (
