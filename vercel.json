@@ -1,6 +1,11 @@
 {
-  "regions": ["gru1"],
+  "regions": [
+    "gru1"
+  ],
   "crons": [
-    { "path": "/api/cron/cadencias", "schedule": "*/20 11-20 * * 1-5" }
+    {
+      "path": "/api/cron/cadencias",
+      "schedule": "*/20 11-20 * * 1-5"
+    }
   ]
 }

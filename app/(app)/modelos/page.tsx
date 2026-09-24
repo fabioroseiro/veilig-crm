@@ -28,8 +28,10 @@ export default async function Modelos() {
               <h2>{m.nome} {m.aprovado ? <span className="tag" style={{ background: "#dcf5e8", color: "#11573a" }}>aprovado</span> : <span className="tag estr">não aprovado</span>}</h2>
               {naoEmail(m.chave)
                 ? <input type="hidden" name="assunto" value={m.assunto} />
-                : <label className="campo"><span>Assunto</span><input name="assunto" defaultValue={m.assunto} disabled={m.chave === "frio_2"} /></label>}
-              {m.chave === "frio_2" && <input type="hidden" name="assunto" value={m.assunto} />}
+                : m.chave === "frio_2"
+                  ? <><input type="hidden" name="assunto" value={m.assunto} />
+                      <div className="aviso atencao">Este e-mail sai como resposta na mesma conversa do toque 1, então o assunto é sempre o do toque 1 com &quot;Re:&quot; na frente. Para mudar, edite o assunto do toque 1.</div></>
+                  : <label className="campo"><span>Assunto</span><input name="assunto" defaultValue={m.assunto} /></label>}
               <label className="campo"><span>{m.chave.startsWith("frio_l") ? "Roteiro da ligação" : m.chave.startsWith("frio_w") ? "Mensagem de WhatsApp" : "Texto"}</span><textarea name="corpo" defaultValue={m.corpo} style={{ minHeight: 220 }} /></label>
               <label className="check" style={{ marginBottom: 10 }}><input type="checkbox" name="aprovado" defaultChecked={m.aprovado} /> Aprovado para envio</label>
               <div className="linha">
@@ -39,7 +41,7 @@ export default async function Modelos() {
             <div>
               <div className="muted" style={{ fontSize: 12, marginBottom: 4 }}>Prévia</div>
               <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, background: "#fff" }}>
-                {!naoEmail(m.chave) && <div style={{ fontWeight: 700, marginBottom: 10 }}>{m.chave === "frio_2" ? "Re: (assunto do toque 1)" : preencherTexto(m.assunto, dados)}</div>}
+                {!naoEmail(m.chave) && <div style={{ fontWeight: 700, marginBottom: 10 }}>{m.chave === "frio_2" ? `Re: ${preencherTexto(modelos.find((x) => x.chave === "frio_1")?.assunto ?? "", dados)}` : preencherTexto(m.assunto, dados)}</div>}
                 <div style={{ whiteSpace: "pre-wrap", fontSize: 14 }}>{preencherTexto(m.corpo, dados)}</div>
                 {!naoEmail(m.chave) && <>
                 <div style={{ marginTop: 14, fontSize: 14 }}>{rem?.valor.nome ?? "Natália Artale"}<br />Veilig · veilig.com.br{rem?.valor.whatsapp && <><br />WhatsApp {rem.valor.whatsapp}</>}</div>

@@ -5,6 +5,7 @@ import { q, q1 } from "./db";
 import * as K from "./cadencia";
 import { montarEmail, preencherTexto, camposFaltando, type Remetente } from "./mensagem";
 import { transportador, envioReal } from "./correio";
+import { PLANO_FRIO } from "./plano";
 
 const telas = () => { revalidatePath("/cadencias"); revalidatePath("/modelos"); revalidatePath("/hoje"); revalidatePath("/funil"); };
 
@@ -81,10 +82,17 @@ export async function enviarTeste(chave: string) {
   const rem = await q1<{ valor: Remetente }>("SELECT valor FROM config WHERE chave='remetente'");
   const remetente: Remetente = rem?.valor ?? { email: "natalia@vendas.veilig.com.br", nome: "Natália Artale" };
   const { texto, html } = await montarEmail(preencherTexto(m.corpo, dados), remetente, null);
+  // Toque que sai como resposta na mesma conversa: o assunto é o do e-mail anterior, com "Re:".
+  const passo = PLANO_FRIO.A.find((x) => x.chave === chave && x.responde);
+  let assunto = preencherTexto(m.assunto, dados);
+  if (passo?.responde) {
+    const base = await q1<{ assunto: string }>("SELECT assunto FROM modelo_email WHERE chave=$1", [passo.responde]);
+    assunto = `Re: ${preencherTexto(base?.assunto ?? "", dados)}`;
+  }
   try {
     await transportador(remetente.email).sendMail({
       from: { name: remetente.nome, address: remetente.email }, to: u.email,
-      subject: `[TESTE] ${preencherTexto(m.assunto, dados)}`, text: texto, html,
+      subject: `[TESTE] ${assunto}`, text: texto, html,
     });
   } catch (e) {
     return { erro: `Falha no envio: ${e instanceof Error ? e.message : e}` };
