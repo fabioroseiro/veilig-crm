@@ -1,0 +1,5 @@
+{
+  "crons": [
+    { "path": "/api/cron/cadencias", "schedule": "*/20 11-20 * * 1-5" }
+  ]
+}
