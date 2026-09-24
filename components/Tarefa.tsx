@@ -7,10 +7,19 @@ type Props = {
   grupoId: string; grupo: string; contato: string | null; zap: string | null; texto: string | null;
   responsavel?: string | null;
   concluir: (e: unknown, f: FormData) => Promise<{ ok?: string; erro?: string }>;
+  emailStatus?: string | null;
+  salvarEmail?: (e: unknown, f: FormData) => Promise<{ ok?: string; erro?: string }>;
   adiar1: () => Promise<void>; adiar3: () => Promise<void>; excluir: () => Promise<void>;
 };
 
+const LEMBRETE: Record<string, string> = {
+  ausente: "Este lead não tem e-mail cadastrado. Aproveite o contato para pedir o e-mail do responsável.",
+  corrigir: "O e-mail cadastrado parece ter erro de digitação. Confirme o endereço com o lead.",
+  devolvido: "O último e-mail para este lead voltou. Confirme o endereço correto com ele.",
+};
+
 export function Tarefa(p: Props) {
+  const lembrete = p.emailStatus ? LEMBRETE[p.emailStatus] : null;
   return (
     <div className="tarefa">
       <div>
@@ -21,6 +30,15 @@ export function Tarefa(p: Props) {
           {p.responsavel ? ` · ${p.responsavel}` : ""}
         </div>
         {p.texto && <div className="msg">{p.texto}</div>}
+        {lembrete && p.salvarEmail && (
+          <div className="aviso atencao" style={{ marginTop: 8 }}>
+            <strong>Peça o e-mail.</strong> {lembrete} Sem e-mail, este lead só recebe os toques de WhatsApp e ligação da cadência.
+            <FormAcao acao={p.salvarEmail} className="linha" limpar>
+              <input name="email" type="email" placeholder="email@concessionaria.com.br" style={{ flex: "1 1 240px", marginTop: 8 }} />
+              <div style={{ marginTop: 8 }}><Enviar className="btn btn-mini btn-ink">Salvar e-mail</Enviar></div>
+            </FormAcao>
+          </div>
+        )}
       </div>
       <div className="linha" style={{ alignItems: "flex-start" }}>
         {p.zap && <a className="btn btn-zap btn-mini" href={p.zap} target="_blank" rel="noopener">WhatsApp</a>}

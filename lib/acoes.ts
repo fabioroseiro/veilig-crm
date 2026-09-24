@@ -193,6 +193,20 @@ export async function removerContato(grupoId: string, contatoId: string) {
   atualizarTelas(grupoId);
 }
 
+/** Cadastra ou corrige o e-mail do contato principal (usado nas tarefas da tela Hoje). */
+export async function salvarEmailPrincipal(grupoId: string, _: unknown, f: FormData) {
+  const u = await exigirUsuario();
+  const e = analisarEmail(s(f, "email"));
+  if (e.status === "ausente") return { erro: "Informe o e-mail." };
+  if (e.status === "corrigir") return { erro: e.sugestao ? `Confira o endereço. Você quis dizer ${e.sugestao}?` : "Esse e-mail parece inválido. Confira." };
+  const c = await q1<{ id: string }>(
+    "UPDATE contato SET email=$2, email_status='ok', email_sugestao=NULL WHERE grupo_id=$1 AND principal RETURNING id", [grupoId, e.email]);
+  if (!c) return { erro: "Este lead não tem contato principal. Cadastre o contato na ficha." };
+  await registrar(grupoId, "sistema", `E-mail do contato principal cadastrado: ${e.email}`, u.id);
+  atualizarTelas(grupoId);
+  return { ok: "E-mail salvo." };
+}
+
 export async function aplicarSugestaoEmail(grupoId: string, contatoId: string) {
   await exigirUsuario();
   await q("UPDATE contato SET email=email_sugestao, email_status='ok', email_sugestao=NULL WHERE id=$2 AND grupo_id=$1 AND email_sugestao IS NOT NULL", [grupoId, contatoId]);

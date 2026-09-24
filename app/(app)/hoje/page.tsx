@@ -1,14 +1,14 @@
 import Link from "next/link";
 import { exigirUsuario } from "@/lib/auth";
 import { q } from "@/lib/db";
-import { adiarTarefa, concluirTarefa, excluirTarefa } from "@/lib/acoes";
+import { adiarTarefa, concluirTarefa, excluirTarefa, salvarEmailPrincipal } from "@/lib/acoes";
 import { ETAPAS, TIPOS_TAREFA, TEMPERATURAS, dataBR, diasDesde, hojeISO, linkWhatsApp, preencher, somaDias } from "@/lib/regras";
 import { Tarefa } from "@/components/Tarefa";
 
 export const dynamic = "force-dynamic";
 
 type T = { id: string; titulo: string; tipo: string; texto: string | null; vence_em: string; grupo_id: string; grupo: string;
-  origem: string | null; contato: string | null; whatsapp: string | null; responsavel: string | null };
+  origem: string | null; contato: string | null; whatsapp: string | null; responsavel: string | null; email_status: string | null };
 
 export default async function Hoje({ searchParams }: { searchParams: Promise<{ todas?: string }> }) {
   const u = await exigirUsuario();
@@ -19,7 +19,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ t
 
   const tarefas = await q<T>(
     `SELECT t.id, t.titulo, t.tipo, t.texto, to_char(t.vence_em,'YYYY-MM-DD') AS vence_em, g.id AS grupo_id, g.nome AS grupo, g.origem,
-            c.nome AS contato, c.whatsapp, us.nome AS responsavel
+            c.nome AS contato, c.whatsapp, c.email_status, us.nome AS responsavel
        FROM tarefa t JOIN grupo g ON g.id = t.grupo_id
        LEFT JOIN contato c ON c.grupo_id = g.id AND c.principal
        LEFT JOIN usuario us ON us.id = t.usuario_id
@@ -71,6 +71,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ t
               zap={linkWhatsApp(t.whatsapp, t.tipo === "whatsapp" ? texto : null)}
               responsavel={todas ? t.responsavel : null}
               concluir={concluirTarefa.bind(null, t.id)}
+              emailStatus={t.email_status} salvarEmail={salvarEmailPrincipal.bind(null, t.grupo_id)}
               adiar1={adiarTarefa.bind(null, t.id, 1)} adiar3={adiarTarefa.bind(null, t.id, 3)} excluir={excluirTarefa.bind(null, t.id)} />
           );
         })}

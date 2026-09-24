@@ -70,6 +70,14 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
         </div>
       </div>
 
+      {principal && ["ausente", "corrigir", "devolvido"].includes(principal.email_status) && (
+        <div className="aviso atencao" style={{ marginBottom: 16 }}>
+          <strong>Peça o e-mail.</strong>{" "}
+          {principal.email_status === "ausente" ? "O contato principal não tem e-mail cadastrado." : principal.email_status === "devolvido" ? "O último e-mail para o contato principal voltou." : "O e-mail do contato principal parece ter erro de digitação."}
+          {" "}Sem um e-mail válido, este lead não recebe os e-mails da cadência. Cadastre em Contatos → Editar.
+        </div>
+      )}
+
       <div className="ficha">
         <div className="grade">
           <div className="caixa">
