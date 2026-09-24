@@ -9,18 +9,18 @@ import { PLANO_FRIO } from "./plano";
 
 const telas = () => { revalidatePath("/cadencias"); revalidatePath("/modelos"); revalidatePath("/hoje"); revalidatePath("/funil"); };
 
-export async function iniciarSelecionados(ids: string[]) {
+export async function iniciarSelecionados(tipo: "frio" | "morno", ids: string[]) {
   const u = await exigirUsuario();
-  const n = await K.iniciar(ids.slice(0, 100), u.id);
+  const n = await K.iniciar(ids.slice(0, 100), u.id, tipo);
   telas();
   return { ok: `${n} cadência(s) iniciada(s).` };
 }
 
-export async function iniciarUm(grupoId: string) {
+export async function iniciarUm(grupoId: string, tipo: "frio" | "morno") {
   const u = await exigirUsuario();
-  const n = await K.iniciar([grupoId], u.id);
+  const n = await K.iniciar([grupoId], u.id, tipo);
   revalidatePath(`/grupos/${grupoId}`); telas();
-  if (!n) throw new Error("Lead fora do perfil da cadência Frio");
+  if (!n) throw new Error("Lead fora do perfil da cadência");
 }
 
 export async function pararUm(grupoId: string) {

@@ -7,7 +7,7 @@ import { ETAPAS, PACOTES, SEGMENTOS, TEMPERATURAS, TIPOS_TAREFA, brl, dataBR, di
 import { FormAcao, Enviar } from "@/components/FormAcao";
 import { Seletor, BotaoAcao } from "@/components/Seletor";
 import { iniciarUm, pararUm } from "@/lib/acoes-cadencia";
-import { PLANO_FRIO } from "@/lib/plano";
+import { planoDe, NOME_CADENCIA, type TipoCadencia } from "@/lib/plano";
 
 export const dynamic = "force-dynamic";
 
@@ -37,8 +37,8 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
     q<{ id: string; nome: string }>("SELECT id, nome FROM usuario ORDER BY nome"),
     lerConfig(),
   ]);
-  const cad = await q1<{ status: string; porte: "A" | "B" | "C"; passo: number; ciclo: number; proximo_em: string | null; retomar_em: string | null; motivo: string | null }>(
-    `SELECT status, porte, passo, ciclo, to_char(proximo_em,'DD/MM/YYYY') AS proximo_em, to_char(retomar_em,'DD/MM/YYYY') AS retomar_em, motivo
+  const cad = await q1<{ tipo: TipoCadencia; status: string; porte: "A" | "B" | "C"; passo: number; ciclo: number; proximo_em: string | null; retomar_em: string | null; motivo: string | null }>(
+    `SELECT tipo, status, porte, passo, ciclo, to_char(proximo_em,'DD/MM/YYYY') AS proximo_em, to_char(retomar_em,'DD/MM/YYYY') AS retomar_em, motivo
        FROM cadencia WHERE grupo_id=$1 ORDER BY criado_em DESC LIMIT 1`, [id]);
   const pot = potencial(g.num_lojas, g.pacote, cfg.precos, cfg.lojas_piloto);
   const pond = ponderado(pot, g.etapa, g.situacao);
@@ -115,16 +115,19 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
           </div>
 
           <div className="caixa">
-            <h2>Cadência Frio</h2>
+            <h2>Cadência{cad && (cad.status === "ativa" || cad.status === "pausa") ? ` ${NOME_CADENCIA[cad.tipo]}` : ""}</h2>
             {(() => {
-              const principalOk = principal?.email && principal.email_status === "ok";
-              const perfil = g.situacao === "ativo" && g.temperatura === "frio" && !g.estrategico && g.etapa <= 2;
+              const tipo: TipoCadencia | null = g.temperatura === "frio" ? "frio" : g.temperatura === "morno" ? "morno" : null;
+              const principalOk = tipo === "morno"
+                ? !!principal && ((principal.email && principal.email_status === "ok") || !!principal.whatsapp)
+                : !!principal?.email && principal.email_status === "ok";
+              const perfil = !!tipo && g.situacao === "ativo" && !g.estrategico && g.etapa <= 2;
               if (cad && (cad.status === "ativa" || cad.status === "pausa")) {
-                const p = PLANO_FRIO[cad.porte][cad.passo];
+                const p = planoDe(cad.tipo, cad.porte)[cad.passo];
                 return (
                   <div className="linha" style={{ justifyContent: "space-between" }}>
                     <div style={{ fontSize: 14 }}>
-                      {cad.status === "pausa" ? `Em pausa até ${cad.retomar_em}` : `Próximo: toque ${p?.toque ?? "—"} em ${cad.proximo_em}`}
+                      {cad.status === "pausa" ? (cad.ciclo === 0 ? `Cadência Frio começa em ${cad.retomar_em}` : `Em pausa até ${cad.retomar_em}`) : `Próximo: toque ${p?.toque ?? "—"} em ${cad.proximo_em}`}
                       {cad.ciclo === 2 ? " · segundo ciclo" : ""} · porte {cad.porte}
                       {cad.motivo && <div className="alerta" style={{ fontSize: 13 }}>{cad.motivo}</div>}
                     </div>
@@ -135,11 +138,12 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
               return (
                 <div className="linha" style={{ justifyContent: "space-between" }}>
                   <div className="muted" style={{ fontSize: 14 }}>
-                    {cad ? `Última cadência: ${cad.status === "concluida" ? "concluída" : `parada (${cad.motivo ?? "sem motivo"})`}.` : "Sem cadência."}
-                    {!perfil && " Só entram leads Frios, ativos, em Lead ou Contato feito e não estratégicos."}
-                    {perfil && !principalOk && " O contato principal precisa de um e-mail válido."}
+                    {cad ? `Última cadência: ${NOME_CADENCIA[cad.tipo]}, ${cad.status === "concluida" ? "concluída" : `parada (${cad.motivo ?? "sem motivo"})`}.` : "Sem cadência."}
+                    {!perfil && " Só entram leads Frios ou Mornos, ativos, em Lead ou Contato feito e não estratégicos."}
+                    {perfil && !principalOk && (tipo === "morno" ? " O contato principal precisa de um e-mail válido ou de um celular." : " O contato principal precisa de um e-mail válido.")}
                   </div>
-                  {perfil && principalOk && cad?.status !== "concluida" && <BotaoAcao className="btn btn-mini btn-ink" acao={iniciarUm.bind(null, id)}>Iniciar cadência Frio</BotaoAcao>}
+                  {perfil && principalOk && tipo && !(tipo === "frio" && cad?.tipo === "frio" && cad.status === "concluida") &&
+                    <BotaoAcao className="btn btn-mini btn-ink" acao={iniciarUm.bind(null, id, tipo)}>Iniciar cadência {NOME_CADENCIA[tipo]}</BotaoAcao>}
                 </div>
               );
             })()}

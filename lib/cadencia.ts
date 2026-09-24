@@ -2,7 +2,7 @@ import "server-only";
 import { randomUUID } from "crypto";
 import { simpleParser } from "mailparser";
 import { q, q1 } from "./db";
-import { PAUSA_DIAS, PLANO_FRIO, type Passo } from "./plano";
+import { PAUSA_DIAS, MORNO_PARA_FRIO_DIAS, NOME_CADENCIA, planoDe, type Passo, type TipoCadencia } from "./plano";
 import { camposFaltando, montarEmail, preencherTexto, urlApp } from "./mensagem";
 import { caixa, envioReal, transportador } from "./correio";
 import { hojeISO, porte as calcPorte, somaDias } from "./regras";
@@ -36,19 +36,32 @@ async function atividade(grupoId: string, tipo: string, resumo: string, detalhe?
 
 type Elegivel = { id: string; num_lojas: number };
 
-/** Inicia a cadência Frio. Só entra quem está elegível agora (confere de novo no servidor). */
-export async function iniciar(grupoIds: string[], usuarioId: string) {
+/**
+ * Quem pode entrar em cada cadência (a mesma regra da tela e do servidor).
+ * Frio: e-mail válido no contato principal e nunca ter concluído uma cadência Frio.
+ * Morno: e-mail válido ou celular no contato principal (a cadência é quase toda por WhatsApp).
+ */
+export const FILTRO_ELEGIVEL: Record<TipoCadencia, string> = {
+  frio: `g.situacao = 'ativo' AND g.temperatura = 'frio' AND NOT g.estrategico AND g.etapa <= 2
+         AND c.email_status = 'ok'
+         AND NOT EXISTS (SELECT 1 FROM cadencia k WHERE k.grupo_id = g.id AND (k.status IN ('ativa','pausa') OR (k.tipo = 'frio' AND k.status = 'concluida')))`,
+  morno: `g.situacao = 'ativo' AND g.temperatura = 'morno' AND NOT g.estrategico AND g.etapa <= 2
+         AND (c.email_status = 'ok' OR c.whatsapp IS NOT NULL)
+         AND NOT EXISTS (SELECT 1 FROM cadencia k WHERE k.grupo_id = g.id AND k.status IN ('ativa','pausa'))`,
+};
+
+/** Inicia a cadência. Só entra quem está elegível agora (confere de novo no servidor). */
+export async function iniciar(grupoIds: string[], usuarioId: string, tipo: TipoCadencia = "frio") {
   if (grupoIds.length === 0) return 0;
   const ok = await q<Elegivel>(
     `SELECT g.id, g.num_lojas FROM grupo g
-       JOIN contato c ON c.grupo_id = g.id AND c.principal AND c.email_status = 'ok'
-      WHERE g.id = ANY($1) AND g.situacao = 'ativo' AND g.temperatura = 'frio' AND NOT g.estrategico AND g.etapa <= 2
-        AND NOT EXISTS (SELECT 1 FROM cadencia k WHERE k.grupo_id = g.id AND k.status IN ('ativa','pausa','concluida'))`, [grupoIds]);
+       JOIN contato c ON c.grupo_id = g.id AND c.principal
+      WHERE g.id = ANY($1) AND ${FILTRO_ELEGIVEL[tipo]}`, [grupoIds]);
   const hoje = hojeISO();
   for (const g of ok) {
-    await q(`INSERT INTO cadencia (grupo_id, porte, proximo_em, iniciada_por) VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING`,
-      [g.id, calcPorte(g.num_lojas), hoje, usuarioId]);
-    await atividade(g.id, "sistema", `Cadência Frio iniciada (porte ${calcPorte(g.num_lojas)})`);
+    await q(`INSERT INTO cadencia (grupo_id, tipo, porte, proximo_em, iniciada_por) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
+      [g.id, tipo, calcPorte(g.num_lojas), hoje, usuarioId]);
+    await atividade(g.id, "sistema", `Cadência ${NOME_CADENCIA[tipo]} iniciada (porte ${calcPorte(g.num_lojas)})`);
   }
   return ok.length;
 }
@@ -64,7 +77,7 @@ export async function parar(grupoId: string, motivo: string) {
 
 // ---------------- Avanço dos toques ----------------
 
-type Cad = { id: string; grupo_id: string; ciclo: number; porte: "A" | "B" | "C"; passo: number;
+type Cad = { id: string; grupo_id: string; tipo: TipoCadencia; ciclo: number; porte: "A" | "B" | "C"; passo: number;
   nome: string; origem: string | null; segmento: string | null; temperatura: string; situacao: string; estrategico: boolean; etapa: number;
   responsavel_id: string | null; contato_id: string | null; contato_nome: string | null; email: string | null; email_status: string | null; whatsapp: string | null };
 
@@ -81,7 +94,7 @@ async function tarefa(c: Cad, tipo: string, titulo: string, texto: string | null
 async function executar(c: Cad, p: Passo): Promise<boolean> {
   const dados = { nome: c.contato_nome, grupo: c.nome, origem: c.origem, segmento: c.segmento };
   const emailOk = c.email && c.email_status === "ok";
-  const prefixo = `Toque ${p.toque} da cadência Frio`;
+  const prefixo = `Toque ${p.toque} da cadência ${NOME_CADENCIA[c.tipo] ?? "Frio"}`;
 
   if (p.canal === "ligacao" || p.canal === "whatsapp") {
     // Texto do WhatsApp ou roteiro da ligação, se o modelo existir e estiver aprovado.
@@ -126,18 +139,18 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
 
 export async function processarPassos() {
   const hoje = hojeISO();
-  // Retoma as pausas vencidas: segundo ciclo (o primeiro já passou) ou arquivo.
+  // Retoma as pausas vencidas: ciclo 0 → primeiro ciclo (Frio agendado depois do Morno); ciclo 1 → segundo ciclo.
   const pausas = await q<{ id: string; grupo_id: string; ciclo: number; ok: boolean }>(
     `SELECT k.id, k.grupo_id, k.ciclo, (g.situacao='ativo' AND g.temperatura='frio' AND NOT g.estrategico) AS ok
        FROM cadencia k JOIN grupo g ON g.id = k.grupo_id WHERE k.status='pausa' AND k.retomar_em <= $1`, [hoje]);
   for (const k of pausas) {
     if (!k.ok) { await q("UPDATE cadencia SET status='parada', motivo='Lead mudou de situação durante a pausa' WHERE id=$1", [k.id]); continue; }
-    await q("UPDATE cadencia SET status='ativa', ciclo=2, passo=0, proximo_em=$2, retomar_em=NULL, motivo=NULL, atualizado_em=now() WHERE id=$1", [k.id, hoje]);
-    await atividade(k.grupo_id, "sistema", "Cadência Frio retomada: segundo ciclo");
+    await q("UPDATE cadencia SET status='ativa', ciclo=ciclo+1, passo=0, proximo_em=$2, retomar_em=NULL, motivo=NULL, atualizado_em=now() WHERE id=$1", [k.id, hoje]);
+    await atividade(k.grupo_id, "sistema", k.ciclo === 0 ? "Cadência Frio iniciada (30 dias depois do fim do Morno)" : "Cadência Frio retomada: segundo ciclo");
   }
 
   const cads = await q<Cad>(
-    `SELECT k.id, k.grupo_id, k.ciclo, k.porte, k.passo, g.nome, g.origem, g.segmento, g.temperatura, g.situacao, g.estrategico, g.etapa,
+    `SELECT k.id, k.grupo_id, k.tipo, k.ciclo, k.porte, k.passo, g.nome, g.origem, g.segmento, g.temperatura, g.situacao, g.estrategico, g.etapa,
             g.responsavel_id, c.id AS contato_id, c.nome AS contato_nome, c.email, c.email_status, c.whatsapp
        FROM cadencia k JOIN grupo g ON g.id = k.grupo_id
        LEFT JOIN contato c ON c.grupo_id = g.id AND c.principal
@@ -147,11 +160,11 @@ export async function processarPassos() {
   let feitos = 0;
   for (const c of cads) {
     // O lead saiu do perfil da cadência (respondeu, avançou, virou estratégico): para.
-    if (c.situacao !== "ativo" || c.temperatura !== "frio" || c.estrategico || c.etapa > 2) {
+    if (c.situacao !== "ativo" || c.temperatura !== c.tipo || c.estrategico || c.etapa > 2) {
       await parar(c.grupo_id, c.estrategico ? "marcado como Estratégico" : c.situacao !== "ativo" ? `lead ${c.situacao}` : c.etapa > 2 ? "lead avançou no funil" : "temperatura mudou");
       continue;
     }
-    const plano = PLANO_FRIO[c.porte];
+    const plano = planoDe(c.tipo, c.porte);
     const p = plano[c.passo];
     if (!p) { await q("UPDATE cadencia SET status='concluida' WHERE id=$1", [c.id]); continue; }
     if (!(await executar(c, p))) continue;
@@ -159,6 +172,14 @@ export async function processarPassos() {
     const prox = plano[c.passo + 1];
     if (prox) {
       await q("UPDATE cadencia SET passo=passo+1, proximo_em=$2, motivo=NULL, atualizado_em=now() WHERE id=$1", [c.id, somaDias(hoje, prox.dia - p.dia)]);
+    } else if (c.tipo === "morno") {
+      // Fim do Morno: o lead vira Frio e a cadência Frio começa sozinha depois de 30 dias.
+      const inicio = somaDias(hoje, MORNO_PARA_FRIO_DIAS);
+      await q("UPDATE cadencia SET status='concluida', passo=passo+1, proximo_em=NULL, atualizado_em=now() WHERE id=$1", [c.id]);
+      await q("UPDATE grupo SET temperatura='frio', atualizado_em=now() WHERE id=$1", [c.grupo_id]);
+      await q(`INSERT INTO cadencia (grupo_id, tipo, ciclo, porte, status, retomar_em) VALUES ($1,'frio',0,$2,'pausa',$3) ON CONFLICT DO NOTHING`,
+        [c.grupo_id, c.porte, inicio]);
+      await atividade(c.grupo_id, "temperatura", `Cadência Morno concluída sem avanço: temperatura Morno → Frio. A cadência Frio começa em ${inicio.split("-").reverse().join("/")}`);
     } else if (c.ciclo === 1) {
       const retomar = somaDias(hoje, PAUSA_DIAS[c.porte]);
       await q("UPDATE cadencia SET status='pausa', passo=passo+1, proximo_em=NULL, retomar_em=$2, atualizado_em=now() WHERE id=$1", [c.id, retomar]);

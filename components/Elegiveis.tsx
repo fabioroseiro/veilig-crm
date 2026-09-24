@@ -2,9 +2,9 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-type L = { id: string; nome: string; porte: string; lojas: number; contato: string | null; email: string; origem: string | null };
+type L = { id: string; nome: string; porte: string; lojas: number; contato: string | null; email: string | null; whatsapp?: string | null; origem: string | null };
 
-export function Elegiveis({ leads, iniciar }: { leads: L[]; iniciar: (ids: string[]) => Promise<{ ok: string }> }) {
+export function Elegiveis({ leads, iniciar, nome = "Frio" }: { leads: L[]; iniciar: (ids: string[]) => Promise<{ ok: string }>; nome?: string }) {
   const [sel, setSel] = useState<Set<string>>(new Set());
   const [porte, setPorte] = useState("");
   const [msg, setMsg] = useState("");
@@ -23,19 +23,19 @@ export function Elegiveis({ leads, iniciar }: { leads: L[]; iniciar: (ids: strin
         <button className="btn btn-mini" type="button" onClick={() => primeiros(30)}>Selecionar 30</button>
         <button className="btn btn-mini" type="button" onClick={() => setSel(new Set())}>Limpar</button>
         <button className="btn btn-ink" type="button" disabled={pendente || sel.size === 0}
-          onClick={() => { if (confirm(`Iniciar a cadência Frio para ${sel.size} lead(s)? O primeiro e-mail sai na próxima rodada, se o envio automático estiver ligado.`)) iniciarT(async () => { const r = await iniciar([...sel]); setMsg(r.ok); setSel(new Set()); }); }}>
+          onClick={() => { if (confirm(`Iniciar a cadência ${nome} para ${sel.size} lead(s)? O primeiro toque acontece na próxima rodada, se o envio automático estiver ligado.`)) iniciarT(async () => { const r = await iniciar([...sel]); setMsg(r.ok); setSel(new Set()); }); }}>
           {pendente ? "Iniciando…" : `Iniciar cadência para ${sel.size}`}
         </button>
       </div>
       {msg && <div className="aviso ok">{msg}</div>}
       <div className="rolagem" style={{ maxHeight: 480, overflowY: "auto" }}>
         <table>
-          <thead><tr><th></th><th>Grupo</th><th>Porte</th><th>Contato</th><th>E-mail</th><th>Origem</th></tr></thead>
+          <thead><tr><th></th><th>Grupo</th><th>Porte</th><th>Contato</th><th>E-mail / WhatsApp</th><th>Origem</th></tr></thead>
           <tbody>{lista.map((l) => (
             <tr key={l.id}>
               <td><input type="checkbox" checked={sel.has(l.id)} onChange={() => alternar(l.id)} /></td>
               <td><Link href={`/grupos/${l.id}`}>{l.nome}</Link></td>
-              <td>{l.porte} · {l.lojas}</td><td>{l.contato ?? "—"}</td><td style={{ fontSize: 13 }}>{l.email}</td>
+              <td>{l.porte} · {l.lojas}</td><td>{l.contato ?? "—"}</td><td style={{ fontSize: 13 }}>{l.email ?? (l.whatsapp ? `WhatsApp +${l.whatsapp}` : "—")}</td>
               <td>{l.origem ?? <span className="alerta">sem origem</span>}</td>
             </tr>
           ))}</tbody>

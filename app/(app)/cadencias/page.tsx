@@ -2,8 +2,8 @@ import Link from "next/link";
 import { q, q1 } from "@/lib/db";
 import { porte } from "@/lib/regras";
 import { envioReal } from "@/lib/correio";
-import { janelaDeEnvio } from "@/lib/cadencia";
-import { PLANO_FRIO } from "@/lib/plano";
+import { janelaDeEnvio, FILTRO_ELEGIVEL } from "@/lib/cadencia";
+import { planoDe, NOME_CADENCIA, type TipoCadencia } from "@/lib/plano";
 import * as C from "@/lib/acoes-cadencia";
 import { Elegiveis } from "@/components/Elegiveis";
 import { FormAcao, Enviar } from "@/components/FormAcao";
@@ -46,14 +46,16 @@ export default async function Cadencias() {
   const porToque = saidas.reduce<Record<string, number>>((m, x) => { const k = x.toque ? String(x.toque) : "?"; m[k] = (m[k] || 0) + 1; return m; }, {});
   const caixa = await q1<{ lido_em: string | null }>("SELECT lido_em FROM caixa_estado WHERE caixa=$1", [remetente]);
 
-  const elegiveis = await q<{ id: string; nome: string; num_lojas: number; contato: string | null; email: string; origem: string | null }>(
-    `SELECT g.id, g.nome, g.num_lojas, c.nome AS contato, c.email, g.origem FROM grupo g
-       JOIN contato c ON c.grupo_id = g.id AND c.principal AND c.email_status = 'ok'
-      WHERE g.situacao='ativo' AND g.temperatura='frio' AND NOT g.estrategico AND g.etapa <= 2
-        AND NOT EXISTS (SELECT 1 FROM cadencia k WHERE k.grupo_id = g.id AND k.status IN ('ativa','pausa','concluida'))
+  const elegiveisDe = (tipo: TipoCadencia) => q<{ id: string; nome: string; num_lojas: number; contato: string | null; email: string | null; whatsapp: string | null; origem: string | null }>(
+    `SELECT g.id, g.nome, g.num_lojas, c.nome AS contato, CASE WHEN c.email_status='ok' THEN c.email END AS email, c.whatsapp, g.origem FROM grupo g
+       JOIN contato c ON c.grupo_id = g.id AND c.principal
+      WHERE ${FILTRO_ELEGIVEL[tipo]}
       ORDER BY g.num_lojas DESC, g.nome`);
-  const ativas = await q<{ grupo_id: string; nome: string; porte: "A" | "B" | "C"; passo: number; ciclo: number; proximo_em: string | null; status: string; retomar_em: string | null; motivo: string | null }>(
-    `SELECT k.grupo_id, g.nome, k.porte, k.passo, k.ciclo, to_char(k.proximo_em,'DD/MM') AS proximo_em, k.status, to_char(k.retomar_em,'DD/MM/YYYY') AS retomar_em, k.motivo
+  const [elegiveis, elegiveisMorno] = await Promise.all([elegiveisDe("frio"), elegiveisDe("morno")]);
+  const paraTela = (l: Awaited<ReturnType<typeof elegiveisDe>>) =>
+    l.map((x) => ({ id: x.id, nome: x.nome, porte: porte(x.num_lojas), lojas: x.num_lojas, contato: x.contato, email: x.email, whatsapp: x.whatsapp, origem: x.origem }));
+  const ativas = await q<{ grupo_id: string; nome: string; tipo: TipoCadencia; porte: "A" | "B" | "C"; passo: number; ciclo: number; proximo_em: string | null; status: string; retomar_em: string | null; motivo: string | null }>(
+    `SELECT k.grupo_id, g.nome, k.tipo, k.porte, k.passo, k.ciclo, to_char(k.proximo_em,'DD/MM') AS proximo_em, k.status, to_char(k.retomar_em,'DD/MM/YYYY') AS retomar_em, k.motivo
        FROM cadencia k JOIN grupo g ON g.id=k.grupo_id WHERE k.status IN ('ativa','pausa') ORDER BY k.proximo_em NULLS LAST, g.nome LIMIT 300`);
   const envios = await q<{ id: string; grupo_id: string; nome: string; para: string; assunto: string; status: string; erro: string | null; quando: string; toque: number | null }>(
     `SELECT e.id, e.grupo_id, g.nome, e.para, e.assunto, e.status, e.erro, e.toque,
@@ -103,23 +105,29 @@ export default async function Cadencias() {
       <div className="caixa" style={{ marginBottom: 16 }}>
         <h2>Leads prontos para a cadência Frio ({elegiveis.length})</h2>
         <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>Frios, em Lead ou Contato feito, não estratégicos, com e-mail válido no contato principal e sem cadência anterior.</p>
-        <Elegiveis leads={elegiveis.map((l) => ({ id: l.id, nome: l.nome, porte: porte(l.num_lojas), lojas: l.num_lojas, contato: l.contato, email: l.email, origem: l.origem }))}
-          iniciar={C.iniciarSelecionados} />
+        <Elegiveis leads={paraTela(elegiveis)} iniciar={C.iniciarSelecionados.bind(null, "frio")} nome="Frio" />
+      </div>
+
+      <div className="caixa" style={{ marginBottom: 16 }}>
+        <h2>Leads prontos para a cadência Morno ({elegiveisMorno.length})</h2>
+        <p className="muted" style={{ marginTop: -6, fontSize: 13 }}>Mornos, em Lead ou Contato feito, não estratégicos, com e-mail válido ou celular no contato principal. A cadência é quase toda por WhatsApp: vira tarefa com o texto pronto na tela Hoje.</p>
+        <Elegiveis leads={paraTela(elegiveisMorno)} iniciar={C.iniciarSelecionados.bind(null, "morno")} nome="Morno" />
       </div>
 
       <div className="caixa" style={{ marginBottom: 16 }}>
         <h2>Em andamento ({ativas.length})</h2>
         <div className="rolagem" style={{ maxHeight: 420, overflowY: "auto" }}>
           <table>
-            <thead><tr><th>Grupo</th><th>Porte</th><th>Próximo toque</th><th>Quando</th><th>Observação</th><th></th></tr></thead>
+            <thead><tr><th>Grupo</th><th>Cadência</th><th>Porte</th><th>Próximo toque</th><th>Quando</th><th>Observação</th><th></th></tr></thead>
             <tbody>{ativas.map((a) => {
-              const p = PLANO_FRIO[a.porte][a.passo];
+              const p = planoDe(a.tipo, a.porte)[a.passo];
               return (
                 <tr key={a.grupo_id}>
                   <td><Link href={`/grupos/${a.grupo_id}`}>{a.nome}</Link>{a.ciclo === 2 && <span className="tag" style={{ marginLeft: 6 }}>2º ciclo</span>}</td>
+                  <td>{NOME_CADENCIA[a.tipo]}</td>
                   <td>{a.porte}</td>
-                  <td>{a.status === "pausa" ? "Pausa" : p ? `${p.toque} · ${p.canal === "email" ? "e-mail" : p.canal === "ligacao" ? "ligação" : p.canal === "whatsapp" ? "WhatsApp" : "e-mail ou WhatsApp"}` : "—"}</td>
-                  <td>{a.status === "pausa" ? `retoma ${a.retomar_em}` : a.proximo_em}</td>
+                  <td>{a.status === "pausa" ? (a.ciclo === 0 ? "Aguardando início" : "Pausa") : p ? `${p.toque} · ${p.canal === "email" ? "e-mail" : p.canal === "ligacao" ? "ligação" : p.canal === "whatsapp" ? "WhatsApp" : "e-mail ou WhatsApp"}` : "—"}</td>
+                  <td>{a.status === "pausa" ? `${a.ciclo === 0 ? "começa" : "retoma"} ${a.retomar_em}` : a.proximo_em}</td>
                   <td className="alerta" style={{ fontSize: 13 }}>{a.motivo ?? ""}</td>
                   <td><BotaoAcao className="btn btn-mini btn-perigo" confirmar="Parar a cadência deste lead?" acao={C.pararUm.bind(null, a.grupo_id)}>Parar</BotaoAcao></td>
                 </tr>
