@@ -143,6 +143,8 @@ export async function salvarGrupo(grupoId: string, _: unknown, f: FormData) {
 
 export async function novoGrupo(_: unknown, f: FormData) {
   const u = await exigirUsuario();
+  const cfg = await lerConfig();
+  const sdr = await q1<{ id: string }>("SELECT id FROM usuario WHERE lower(email)=lower($1)", [cfg.sdr_email]);
   const nome = s(f, "nome");
   if (!nome) return { erro: "Informe o nome do grupo ou da concessionária." };
   const email = analisarEmail(s(f, "email"));
@@ -152,7 +154,7 @@ export async function novoGrupo(_: unknown, f: FormData) {
     const g = await c.query<{ id: string }>(
       `INSERT INTO grupo (nome, origem, segmento, num_lojas, temperatura, responsavel_id, ultimo_sinal)
        VALUES ($1,$2,$3,GREATEST(COALESCE($4,1),1),COALESCE($5,'frio'),$6, CASE WHEN $5='quente' THEN now() END) RETURNING id`,
-      [nome, s(f, "origem"), s(f, "segmento"), n(f, "num_lojas"), s(f, "temperatura"), u.id]);
+      [nome, s(f, "origem"), s(f, "segmento"), n(f, "num_lojas"), s(f, "temperatura"), sdr?.id ?? u.id]);
     const gid = g.rows[0].id;
     await c.query(`INSERT INTO contato (grupo_id, nome, cargo, email, email_status, email_sugestao, whatsapp, telefone, principal)
                    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,true)`,
@@ -270,6 +272,7 @@ export async function importar(arquivo: string, modelo: string, grupos: GrupoImp
   const u = await exigirUsuario();
   const cfg = await lerConfig();
   const closer = await q1<{ id: string }>("SELECT id FROM usuario WHERE lower(email)=lower($1)", [cfg.closer_email]);
+  const sdr = await q1<{ id: string }>("SELECT id FROM usuario WHERE lower(email)=lower($1)", [cfg.sdr_email]);
   const incluir = grupos.filter((g) => g.incluir && !g.excluido);
   if (incluir.length > 2000) return { criados: 0, duplicados: [], ignorados: 0, erro: "Arquivo grande demais: importe em partes de até 2.000 grupos." };
 
@@ -292,7 +295,7 @@ export async function importar(arquivo: string, modelo: string, grupos: GrupoImp
       [arquivo, modelo, novos.length, u.id]);
     const impId = imp.rows[0].id;
     for (const g of novos) {
-      const resp = g.etapa >= ETAPA_PASSA_CLOSER && closer ? closer.id : u.id;
+      const resp = g.etapa >= ETAPA_PASSA_CLOSER && closer ? closer.id : sdr?.id ?? u.id;
       const r = await c.query<{ id: string }>(
         `INSERT INTO grupo (nome, tipo, origem, origem_interna, segmento, marcas, num_lojas, entregas_mes, etapa, situacao, pausado_ate,
            perdido_motivo, temperatura, pacote, ultimo_sinal, observacoes, responsavel_id, importacao_id)
@@ -329,7 +332,7 @@ export async function salvarConfig(_: unknown, f: FormData) {
   const piloto = n(f, "lojas_piloto") ?? 4;
   const dominios = (s(f, "dominios_excluidos") || "").split(/[\s,;]+/).map((d) => d.toLowerCase()).filter(Boolean);
   await tx(async (c) => {
-    for (const [chave, valor] of [["precos", precos], ["lojas_piloto", piloto], ["closer_email", s(f, "closer_email") || ""], ["dominios_excluidos", dominios]] as const)
+    for (const [chave, valor] of [["precos", precos], ["lojas_piloto", piloto], ["closer_email", s(f, "closer_email") || ""], ["sdr_email", s(f, "sdr_email") || ""], ["dominios_excluidos", dominios]] as const)
       await c.query("INSERT INTO config (chave, valor) VALUES ($1,$2) ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor", [chave, JSON.stringify(valor)]);
   });
   revalidatePath("/", "layout");

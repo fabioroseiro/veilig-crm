@@ -20,6 +20,7 @@ export default async function Config() {
               <label className="campo"><span>Completo (R$)</span><input name="completo" type="number" min={0} defaultValue={cfg.precos.completo ?? ""} /></label>
             </div>
             <label className="campo"><span>Lojas do piloto (porte A)</span><input name="lojas_piloto" type="number" min={1} defaultValue={cfg.lojas_piloto} /></label>
+            <label className="campo"><span>E-mail de quem cuida da prospecção (recebe os leads novos, até Proposta enviada)</span><input name="sdr_email" type="email" defaultValue={cfg.sdr_email} /></label>
             <label className="campo"><span>E-mail do closer (recebe os leads a partir de Proposta enviada)</span><input name="closer_email" type="email" defaultValue={cfg.closer_email} /></label>
             <label className="campo"><span>Domínios de e-mail excluídos da importação</span><input name="dominios_excluidos" defaultValue={cfg.dominios_excluidos.join(", ")} /></label>
             <Enviar>Salvar</Enviar>
