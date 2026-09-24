@@ -84,7 +84,10 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
   const prefixo = `Toque ${p.toque} da cadência Frio`;
 
   if (p.canal === "ligacao" || p.canal === "whatsapp") {
-    await tarefa(c, p.canal, `${prefixo}: ${p.titulo?.replace(/^(Ligação|WhatsApp): /, "")}`, null);
+    // Texto do WhatsApp ou roteiro da ligação, se o modelo existir e estiver aprovado.
+    const mt = p.chave ? await modelo(p.chave) : null;
+    const texto = mt?.aprovado ? preencherTexto(mt.corpo, dados) : null;
+    await tarefa(c, p.canal, `${prefixo}: ${p.titulo?.replace(/^(Ligação|WhatsApp): /, "")}`, texto);
     return true;
   }
   let chave = p.chave!;
