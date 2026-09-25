@@ -123,7 +123,7 @@ export default async function Cadencias() {
               const p = planoDe(a.tipo, a.porte)[a.passo];
               return (
                 <tr key={a.grupo_id}>
-                  <td><Link href={`/grupos/${a.grupo_id}`}>{a.nome}</Link>{a.ciclo === 2 && <span className="tag" style={{ marginLeft: 6 }}>2º ciclo</span>}</td>
+                  <td><Link href={`/grupos/${a.grupo_id}`}>{a.nome}</Link>{a.ciclo >= 2 && <span className="tag" style={{ marginLeft: 6 }}>{a.ciclo}º ciclo</span>}</td>
                   <td>{NOME_CADENCIA[a.tipo]}</td>
                   <td>{a.porte}</td>
                   <td>{a.status === "pausa" ? (a.ciclo === 0 ? "Aguardando início" : "Pausa") : p ? `${p.toque} · ${p.canal === "email" ? "e-mail" : p.canal === "ligacao" ? "ligação" : p.canal === "whatsapp" ? "WhatsApp" : "e-mail ou WhatsApp"}` : "—"}</td>

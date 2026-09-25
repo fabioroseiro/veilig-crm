@@ -128,7 +128,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                   <div className="linha" style={{ justifyContent: "space-between" }}>
                     <div style={{ fontSize: 14 }}>
                       {cad.status === "pausa" ? (cad.ciclo === 0 ? `Cadência Frio começa em ${cad.retomar_em}` : `Em pausa até ${cad.retomar_em}`) : `Próximo: toque ${p?.toque ?? "—"} em ${cad.proximo_em}`}
-                      {cad.ciclo === 2 ? " · segundo ciclo" : ""} · porte {cad.porte}
+                      {cad.ciclo >= 2 ? ` · ${cad.ciclo}º ciclo` : ""} · porte {cad.porte}
                       {cad.motivo && <div className="alerta" style={{ fontSize: 13 }}>{cad.motivo}</div>}
                     </div>
                     <BotaoAcao className="btn btn-mini btn-perigo" confirmar="Parar a cadência deste lead?" acao={pararUm.bind(null, id)}>Parar cadência</BotaoAcao>

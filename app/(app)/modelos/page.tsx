@@ -8,6 +8,8 @@ export const dynamic = "force-dynamic";
 const ORDEM = ["frio_1", "frio_2", "frio_3", "frio_l4", "frio_5", "frio_w6", "frio_l7", "frio_8", "frio_l9", "frio_10", "frio_w11", "frio_12", "frio_13", "frio_14", "frio_encerramento", "frio_1_ciclo2",
   "morno_w1", "morno_w2", "morno_w3", "morno_4", "morno_w5", "morno_w6", "morno_l7", "morno_w8", "morno_w9", "morno_w10", "morno_w11", "morno_encerramento"];
 const naoEmail = (chave: string) => /^(frio|morno)_[wl]\d/.test(chave);
+/** Toques "e-mail ou WhatsApp": saem por e-mail quando há e-mail válido; senão viram tarefa de WhatsApp com o mesmo texto. */
+const DUPLOS = new Set(["frio_14", "morno_4", "morno_encerramento"]);
 
 export default async function Modelos() {
   const modelos = await q<{ chave: string; nome: string; assunto: string; corpo: string; aprovado: boolean }>("SELECT chave, nome, assunto, corpo, aprovado FROM modelo_email");
@@ -32,7 +34,10 @@ export default async function Modelos() {
                 : m.chave === "frio_2"
                   ? <><input type="hidden" name="assunto" value={m.assunto} />
                       <div className="aviso atencao">Este e-mail sai como resposta na mesma conversa do toque 1, então o assunto é sempre o do toque 1 com &quot;Re:&quot; na frente. Para mudar, edite o assunto do toque 1.</div></>
-                  : <label className="campo"><span>Assunto</span><input name="assunto" defaultValue={m.assunto} /></label>}
+                  : <>
+                      {DUPLOS.has(m.chave) && <div className="aviso atencao">Este toque sai por <strong>e-mail</strong> quando o lead tem e-mail válido. Sem e-mail, vira uma tarefa de <strong>WhatsApp</strong> com o mesmo texto, sem o assunto e sem a assinatura. Por isso o texto precisa funcionar nos dois canais.</div>}
+                      <label className="campo"><span>{DUPLOS.has(m.chave) ? "Assunto (usado só quando sai por e-mail)" : "Assunto"}</span><input name="assunto" defaultValue={m.assunto} /></label>
+                    </>}
               <label className="campo"><span>{/_l\d/.test(m.chave) ? "Roteiro da ligação" : /_w\d/.test(m.chave) ? "Mensagem de WhatsApp" : "Texto"}</span><textarea name="corpo" defaultValue={m.corpo} style={{ minHeight: 220 }} /></label>
               <label className="check" style={{ marginBottom: 10 }}><input type="checkbox" name="aprovado" defaultChecked={m.aprovado} /> Aprovado para envio</label>
               <div className="linha">

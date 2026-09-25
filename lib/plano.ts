@@ -31,11 +31,11 @@ export const PLANO_FRIO: Record<"A" | "B" | "C", Passo[]> = {
   C: [...BASE.slice(0, 7), encerrar(BASE[7])],
 };
 
-/** Pausa depois do fim do ciclo, antes do segundo ciclo. */
+/** Pausa entre um ciclo e o próximo (próximo contato do grupo ou segundo ciclo do original). */
 export const PAUSA_DIAS: Record<"A" | "B" | "C", number> = { A: 30, B: 30, C: 60 };
 
 export const NOMES_MODELO: Record<string, string> = {
-  frio_1: "Toque 1", frio_1_ciclo2: "Toque 1 (segundo ciclo)", frio_2: "Toque 2", frio_3: "Toque 3", frio_5: "Toque 5",
+  frio_1: "Toque 1", frio_1_ciclo2: "Toque 1 (reenvio)", frio_2: "Toque 2", frio_3: "Toque 3", frio_5: "Toque 5",
   frio_8: "Toque 8", frio_10: "Toque 10", frio_12: "Toque 12", frio_13: "Toque 13", frio_14: "Toque 14", frio_encerramento: "Encerramento",
   frio_l4: "Ligação do toque 4", frio_w6: "WhatsApp do toque 6", frio_l7: "Ligação do toque 7", frio_l9: "Ligação do toque 9", frio_w11: "WhatsApp do toque 11",
 };

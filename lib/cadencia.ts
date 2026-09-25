@@ -34,7 +34,7 @@ async function atividade(grupoId: string, tipo: string, resumo: string, detalhe?
 
 // ---------------- Início e parada ----------------
 
-type Elegivel = { id: string; num_lojas: number };
+type Elegivel = { id: string; num_lojas: number; contato_id: string };
 
 /**
  * Quem pode entrar em cada cadência (a mesma regra da tela e do servidor).
@@ -54,13 +54,13 @@ export const FILTRO_ELEGIVEL: Record<TipoCadencia, string> = {
 export async function iniciar(grupoIds: string[], usuarioId: string, tipo: TipoCadencia = "frio") {
   if (grupoIds.length === 0) return 0;
   const ok = await q<Elegivel>(
-    `SELECT g.id, g.num_lojas FROM grupo g
+    `SELECT g.id, g.num_lojas, c.id AS contato_id FROM grupo g
        JOIN contato c ON c.grupo_id = g.id AND c.principal
       WHERE g.id = ANY($1) AND ${FILTRO_ELEGIVEL[tipo]}`, [grupoIds]);
   const hoje = hojeISO();
   for (const g of ok) {
-    await q(`INSERT INTO cadencia (grupo_id, tipo, porte, proximo_em, iniciada_por) VALUES ($1,$2,$3,$4,$5) ON CONFLICT DO NOTHING`,
-      [g.id, tipo, calcPorte(g.num_lojas), hoje, usuarioId]);
+    await q(`INSERT INTO cadencia (grupo_id, tipo, porte, proximo_em, iniciada_por, contato_original) VALUES ($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`,
+      [g.id, tipo, calcPorte(g.num_lojas), hoje, usuarioId, tipo === "frio" ? g.contato_id : null]);
     await atividade(g.id, "sistema", `Cadência ${NOME_CADENCIA[tipo]} iniciada (porte ${calcPorte(g.num_lojas)})`);
   }
   return ok.length;
@@ -104,7 +104,7 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
     return true;
   }
   let chave = p.chave!;
-  if (chave === "frio_1" && c.ciclo === 2) chave = "frio_1_ciclo2";
+  if (chave === "frio_1" && c.contato_id && (await jaRecebeuToque1(c.contato_id))) chave = "frio_1_ciclo2";
   const m = await modelo(chave);
   if (!m) { await atividade(c.grupo_id, "sistema", `${prefixo}: modelo ${chave} não encontrado`); return true; }
   if (!m.aprovado) {
@@ -123,7 +123,9 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
   let emResposta: string | null = null;
   if (p.responde) {
     const ant = await q1<{ assunto: string; message_id: string | null }>(
-      "SELECT assunto, message_id FROM envio WHERE cadencia_id=$1 AND chave=$2 AND status IN ('enviado','simulado') ORDER BY enviado_em DESC LIMIT 1", [c.id, p.responde === "frio_1" && c.ciclo === 2 ? "frio_1_ciclo2" : p.responde]);
+      `SELECT assunto, message_id FROM envio WHERE cadencia_id=$1 AND contato_id IS NOT DISTINCT FROM $2 AND status IN ('enviado','simulado')
+          AND chave = ANY($3) ORDER BY enviado_em DESC LIMIT 1`,
+      [c.id, c.contato_id, p.responde === "frio_1" ? ["frio_1", "frio_1_ciclo2"] : [p.responde]]);
     if (ant) { assunto = ant.assunto.startsWith("Re: ") ? ant.assunto : `Re: ${ant.assunto}`; emResposta = ant.message_id; }
     else { const base = await modelo(p.responde); assunto = preencherTexto(base?.assunto ?? assunto, dados); }
   }
@@ -137,16 +139,78 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
   return true;
 }
 
+// ---------------- Rodízio de contatos (Frio) ----------------
+
+/** O contato já recebeu o toque 1 da Frio alguma vez (em qualquer ciclo)? */
+async function jaRecebeuToque1(contatoId: string) {
+  const r = await q1<{ n: string }>(
+    "SELECT count(*) AS n FROM envio WHERE contato_id=$1 AND chave IN ('frio_1','frio_1_ciclo2') AND status IN ('fila','enviado','simulado')", [contatoId]);
+  return Number(r?.n ?? 0) > 0;
+}
+
+/** Nome comparável: sem acento, sem parênteses, minúsculo. Evita tratar a mesma pessoa como contato novo. */
+const pessoa = (n: string | null) =>
+  (n ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\(.*?\)/g, "").replace(/\s+/g, " ").trim().toLowerCase();
+
+const dataBR = (iso: string) => iso.split("-").reverse().join("/");
+
+/**
+ * Fim de um ciclo da Frio sem resposta:
+ * 1) se ainda há contato do grupo com e-mail válido que nunca recebeu a cadência, ele vira principal
+ *    e recebe a cadência inteira depois da pausa (todos os contatos, um por vez, sem limite);
+ * 2) tentados todos, o contato original recebe um segundo ciclo (se ainda não recebeu);
+ * 3) sem mais ninguém, o lead é arquivado.
+ */
+async function fimDoCicloFrio(c: Cad, hoje: string) {
+  const retomar = somaDias(hoje, PAUSA_DIAS[c.porte]);
+  const pausar = async (contatoId: string) => {
+    await q("UPDATE contato SET principal = (id = $2) WHERE grupo_id=$1", [c.grupo_id, contatoId]);
+    await q("UPDATE cadencia SET status='pausa', passo=passo+1, proximo_em=NULL, retomar_em=$2, atualizado_em=now() WHERE id=$1", [c.id, retomar]);
+  };
+
+  const contatos = await q<{ id: string; nome: string | null; email: string | null; email_status: string; tentado: boolean; ciclos: number }>(
+    `SELECT ct.id, ct.nome, ct.email, ct.email_status,
+            EXISTS (SELECT 1 FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('fila','enviado','simulado')) AS tentado,
+            (SELECT count(*)::int FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('enviado','simulado')) AS ciclos
+       FROM contato ct WHERE ct.grupo_id = $1 ORDER BY ct.criado_em, ct.id`, [c.grupo_id]);
+  const tentadas = new Set(contatos.filter((x) => x.tentado || x.id === c.contato_id).map((x) => pessoa(x.nome)).filter(Boolean));
+
+  const proximo = contatos.find((x) =>
+    x.id !== c.contato_id && !x.tentado && x.email_status === "ok" && x.email && !tentadas.has(pessoa(x.nome)));
+  if (proximo) {
+    await pausar(proximo.id);
+    await atividade(c.grupo_id, "sistema",
+      `Ciclo da cadência Frio concluído sem resposta${c.contato_nome ? ` de ${c.contato_nome}` : ""}. Próximo ciclo com ${proximo.nome || proximo.email} a partir de ${dataBR(retomar)}`);
+    return;
+  }
+
+  const k = await q1<{ contato_original: string | null }>("SELECT contato_original FROM cadencia WHERE id=$1", [c.id]);
+  const original = contatos.find((x) => x.id === k?.contato_original);
+  if (original && original.email_status === "ok" && original.email && original.ciclos < 2) {
+    await pausar(original.id);
+    await atividade(c.grupo_id, "sistema",
+      `Todos os contatos já receberam a cadência Frio. Segundo ciclo com ${original.nome || original.email} a partir de ${dataBR(retomar)}`);
+    return;
+  }
+
+  const motivo = "Arquivado: cadência Frio concluída com todos os contatos, sem resposta";
+  await q("UPDATE cadencia SET status='concluida', passo=passo+1, proximo_em=NULL, atualizado_em=now() WHERE id=$1", [c.id]);
+  await q("UPDATE grupo SET situacao='perdido', perdido_motivo=$2, atualizado_em=now() WHERE id=$1", [c.grupo_id, motivo]);
+  await atividade(c.grupo_id, "sistema", motivo);
+}
+
 export async function processarPassos() {
   const hoje = hojeISO();
-  // Retoma as pausas vencidas: ciclo 0 → primeiro ciclo (Frio agendado depois do Morno); ciclo 1 → segundo ciclo.
+  // Retoma as pausas vencidas: ciclo 0 → primeiro ciclo (Frio agendado depois do Morno); depois, o ciclo seguinte com o contato principal da vez.
   const pausas = await q<{ id: string; grupo_id: string; ciclo: number; ok: boolean }>(
     `SELECT k.id, k.grupo_id, k.ciclo, (g.situacao='ativo' AND g.temperatura='frio' AND NOT g.estrategico) AS ok
        FROM cadencia k JOIN grupo g ON g.id = k.grupo_id WHERE k.status='pausa' AND k.retomar_em <= $1`, [hoje]);
   for (const k of pausas) {
     if (!k.ok) { await q("UPDATE cadencia SET status='parada', motivo='Lead mudou de situação durante a pausa' WHERE id=$1", [k.id]); continue; }
     await q("UPDATE cadencia SET status='ativa', ciclo=ciclo+1, passo=0, proximo_em=$2, retomar_em=NULL, motivo=NULL, atualizado_em=now() WHERE id=$1", [k.id, hoje]);
-    await atividade(k.grupo_id, "sistema", k.ciclo === 0 ? "Cadência Frio iniciada (30 dias depois do fim do Morno)" : "Cadência Frio retomada: segundo ciclo");
+    const pr = await q1<{ nome: string | null; email: string | null }>("SELECT nome, email FROM contato WHERE grupo_id=$1 AND principal", [k.grupo_id]);
+    const quem = pr ? ` com ${pr.nome || pr.email}` : "";
+    await atividade(k.grupo_id, "sistema", k.ciclo === 0 ? `Cadência Frio iniciada${quem} (30 dias depois do fim do Morno)` : `Cadência Frio retomada: novo ciclo${quem}`);
   }
 
   const cads = await q<Cad>(
@@ -177,17 +241,11 @@ export async function processarPassos() {
       const inicio = somaDias(hoje, MORNO_PARA_FRIO_DIAS);
       await q("UPDATE cadencia SET status='concluida', passo=passo+1, proximo_em=NULL, atualizado_em=now() WHERE id=$1", [c.id]);
       await q("UPDATE grupo SET temperatura='frio', atualizado_em=now() WHERE id=$1", [c.grupo_id]);
-      await q(`INSERT INTO cadencia (grupo_id, tipo, ciclo, porte, status, retomar_em) VALUES ($1,'frio',0,$2,'pausa',$3) ON CONFLICT DO NOTHING`,
-        [c.grupo_id, c.porte, inicio]);
+      await q(`INSERT INTO cadencia (grupo_id, tipo, ciclo, porte, status, retomar_em, contato_original) VALUES ($1,'frio',0,$2,'pausa',$3,$4) ON CONFLICT DO NOTHING`,
+        [c.grupo_id, c.porte, inicio, c.contato_id]);
       await atividade(c.grupo_id, "temperatura", `Cadência Morno concluída sem avanço: temperatura Morno → Frio. A cadência Frio começa em ${inicio.split("-").reverse().join("/")}`);
-    } else if (c.ciclo === 1) {
-      const retomar = somaDias(hoje, PAUSA_DIAS[c.porte]);
-      await q("UPDATE cadencia SET status='pausa', passo=passo+1, proximo_em=NULL, retomar_em=$2, atualizado_em=now() WHERE id=$1", [c.id, retomar]);
-      await atividade(c.grupo_id, "sistema", `Primeiro ciclo da cadência Frio concluído. Retoma em ${retomar.split("-").reverse().join("/")}`);
     } else {
-      await q("UPDATE cadencia SET status='concluida', passo=passo+1, proximo_em=NULL, atualizado_em=now() WHERE id=$1", [c.id]);
-      await q("UPDATE grupo SET situacao='perdido', perdido_motivo='Arquivado: dois ciclos da cadência Frio sem resposta', atualizado_em=now() WHERE id=$1", [c.grupo_id]);
-      await atividade(c.grupo_id, "sistema", "Arquivado: dois ciclos da cadência Frio sem resposta");
+      await fimDoCicloFrio(c, hoje);
     }
   }
   return { pausasRetomadas: pausas.length, toques: feitos };
