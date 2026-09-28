@@ -324,7 +324,11 @@ export async function lerRespostas() {
       return { lidas: 0, motivo: "caixa marcada como ponto de partida" };
     }
     let maior = Number(est.ultimo_uid);
-    if (Number(box.uidNext) - 1 <= maior) return { lidas: 0 };
+    if (Number(box.uidNext) - 1 <= maior) {
+      // Nada novo na caixa: registra a leitura mesmo assim, para a tela mostrar o horário certo.
+      await q("UPDATE caixa_estado SET lido_em=now() WHERE caixa=$1", [c.remetente.email]);
+      return { lidas: 0 };
+    }
     for await (const msg of cx.fetch(`${maior + 1}:*`, { uid: true, envelope: true, source: true }, { uid: true })) {
       if (Number(msg.uid) <= maior) continue;
       maior = Math.max(maior, Number(msg.uid));
