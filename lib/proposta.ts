@@ -5,26 +5,25 @@ import { lerConfig } from "./config";
 import { retorno } from "./simulador";
 import { somaDias, hojeISO } from "./regras";
 
-import { PACOTES_PROPOSTA, type DadosProposta, type Pacote } from "./proposta-tipos";
-export * from "./proposta-tipos";
+import { PACOTES_PROPOSTA, onboardingSugerido, type DadosProposta, type Pacote } from "./proposta-tipos";
 
 export type Proposta = {
   id: string; grupo_id: string; numero: string; token: string; status: string; dados: DadosProposta;
   validade: string; enviada_em: string | null; enviada_para: string | null; aberta_em: string | null; aberturas: number;
-  aceita_em: string | null; aceite: { nome: string; cargo: string; email: string; ip: string | null } | null;
+  aceita_em: string | null; aceite: { nome: string; cargo: string; email: string; ip: string | null; onboarding?: "consultivo" | "online" } | null;
   prazo_pedido: { data: string; motivo: string; em: string } | null; criado_em: string;
 };
 
 type Tabela = {
   recorrente: Record<Pacote, number>; setup: { ate3: number; ate9: number; mais: number | null };
-  implantacao: Record<Pacote, number>; fee: number; validade_dias: number; vencimento_dia: number; onboarding_horas: number;
+  fee: number; validade_dias: number; vencimento_dia: number;
 };
 
 export async function tabela(): Promise<Tabela> {
   const r = await q1<{ valor: Tabela }>("SELECT valor FROM config WHERE chave='tabela_proposta'");
   return r?.valor ?? {
     recorrente: { essencial: 400, performance: 900, completo: 1300 }, setup: { ate3: 5000, ate9: 12000, mais: null },
-    implantacao: { essencial: 15, performance: 45, completo: 55 }, fee: 10, validade_dias: 15, vencimento_dia: 10, onboarding_horas: 4,
+    fee: 10, validade_dias: 15, vencimento_dia: 10,
   };
 }
 
@@ -67,9 +66,7 @@ export async function dadosIniciais(grupoId: string): Promise<DadosProposta> {
     setup_total: setupTabela(t, g.num_lojas),
     setup_obs: "",
     fee: t.fee,
-    implantacao_dias: t.implantacao[pacote],
-    onboarding_horas: t.onboarding_horas,
-    onboarding_formato: "remoto",
+    onboarding: onboardingSugerido(g.num_lojas),
     vencimento_dia: t.vencimento_dia,
     mostrar_simulacao: true,
     observacoes: "",

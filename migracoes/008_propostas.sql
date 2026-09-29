@@ -32,8 +32,7 @@ INSERT INTO config (chave, valor) VALUES
   ('tabela_proposta', '{
      "recorrente": {"essencial": 400, "performance": 900, "completo": 1300},
      "setup": {"ate3": 5000, "ate9": 12000, "mais": null},
-     "implantacao": {"essencial": 15, "performance": 45, "completo": 55},
-     "fee": 10, "validade_dias": 15, "vencimento_dia": 10, "onboarding_horas": 4
+     "fee": 10, "validade_dias": 15, "vencimento_dia": 10
    }')
 ON CONFLICT (chave) DO NOTHING;
 

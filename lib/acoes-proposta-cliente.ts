@@ -8,6 +8,7 @@ import { hojeISO } from "./regras";
 import { envioReal, transportador } from "./correio";
 import { urlApp } from "./mensagem";
 import { propostaPorToken, remetenteProposta, type Proposta } from "./proposta";
+import { onboardingDe, ONBOARDING } from "./proposta-tipos";
 import { dataExtenso } from "./proposta-conteudo";
 
 /**
@@ -49,20 +50,24 @@ export async function aceitarProposta(token: string, _: Estado, f: FormData): Pr
   const nome = s(f, "nome", 120), cargo = s(f, "cargo", 120), email = s(f, "email", 160).toLowerCase();
   if (nome.length < 3 || cargo.length < 2 || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return { erro: "Preencha nome, cargo e e-mail." };
   if (f.get("concordo") !== "on") return { erro: "Marque a confirmação para aceitar." };
+  const ofertado = onboardingDe(p.dados);
+  const escolha = f.get("onboarding");
+  if (ofertado === "ambos" && escolha !== "consultivo" && escolha !== "online") return { erro: "Escolha o formato de onboarding." };
+  const formato = ofertado === "ambos" ? (escolha as "consultivo" | "online") : ofertado;
 
-  const aceite = { nome, cargo, email, ip: await ipCliente() };
+  const aceite = { nome, cargo, email, ip: await ipCliente(), ...(ofertado === "ambos" ? { onboarding: formato } : {}) };
   const r = await q<{ id: string }>("UPDATE proposta SET status='aceita', aceita_em=now(), aceite=$2, atualizado_em=now() WHERE id=$1 AND status IN ('enviada','prazo_pedido') RETURNING id", [p.id, aceite]);
   if (!r.length) return { erro: "Esta proposta não está disponível para aceite." };
 
-  await registrar(p.grupo_id, "email", `Proposta ${p.numero} aceita por ${nome} (${cargo})`, `E-mail: ${email}\nIP: ${aceite.ip ?? "—"}`);
+  await registrar(p.grupo_id, "email", `Proposta ${p.numero} aceita por ${nome} (${cargo}). Onboarding ${ONBOARDING[formato].nome}`, `E-mail: ${email}\nIP: ${aceite.ip ?? "—"}`);
   await q("UPDATE grupo SET ultimo_sinal=now() WHERE id=$1", [p.grupo_id]);
   await q("UPDATE tarefa SET feita_em=now(), resultado='Proposta aceita' WHERE grupo_id=$1 AND feita_em IS NULL AND titulo LIKE $2", [p.grupo_id, `Acompanhar a proposta ${p.numero}%`]);
   await aplicarEtapa(p.grupo_id, 6, null, true);
   await q(`INSERT INTO tarefa (grupo_id, tipo, titulo, texto, vence_em, usuario_id) VALUES ($1,'email',$2,$3,$4,$5)`,
-    [p.grupo_id, `Enviar o contrato: proposta ${p.numero} aceita`, `Aceite de ${nome} (${cargo}), ${email}. Enviar o contrato com o Anexo I — Condições Comerciais preenchido com os valores da proposta.`,
+    [p.grupo_id, `Enviar o contrato: proposta ${p.numero} aceita`, `Aceite de ${nome} (${cargo}), ${email}. Onboarding ${ONBOARDING[formato].nome}. Enviar o contrato com o Anexo I — Condições Comerciais preenchido com os valores da proposta e agendar o kickoff.`,
       hojeISO(), await closerId()]);
   await avisarCloser(p, `Proposta aceita: ${p.dados.empresa} (${p.numero})`,
-    `${nome} (${cargo}, ${email}) aceitou a proposta ${p.numero} da ${p.dados.empresa}. Próximo passo: enviar o contrato.`);
+    `${nome} (${cargo}, ${email}) aceitou a proposta ${p.numero} da ${p.dados.empresa}, com onboarding ${ONBOARDING[formato].nome}. Próximo passo: enviar o contrato.`);
   revalidatePath(`/p/${token}`); revalidatePath(`/grupos/${p.grupo_id}`);
   return { ok: "Proposta aceita. Obrigado! Vamos enviar o contrato para assinatura em seguida." };
 }

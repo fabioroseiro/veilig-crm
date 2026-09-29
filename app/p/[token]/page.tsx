@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { q } from "@/lib/db";
 import { propostaPorToken, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
+import { onboardingDe, ONBOARDING } from "@/lib/proposta-tipos";
 import { conteudoProposta, dataExtenso } from "@/lib/proposta-conteudo";
 import { PropostaDoc } from "@/components/PropostaDoc";
 import { AcoesCliente } from "@/components/AcoesCliente";
@@ -37,7 +38,7 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
       {p.status === "cancelada" ? (
         <div className="aviso atencao" style={{ marginBottom: 16 }}>Esta proposta foi substituída ou cancelada. Fale com {rem.nome} ({rem.email}) para receber a versão atual.</div>
       ) : p.status === "aceita" ? (
-        <div className="aviso ok" style={{ marginBottom: 16 }}>Proposta aceita em {new Date(p.aceita_em!).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} por {p.aceite?.nome}. O próximo passo é a assinatura do contrato.</div>
+        <div className="aviso ok" style={{ marginBottom: 16 }}>Proposta aceita em {new Date(p.aceita_em!).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })} por {p.aceite?.nome}{p.aceite?.onboarding ? `, com onboarding ${ONBOARDING[p.aceite.onboarding].nome}` : ""}. O próximo passo é a assinatura do contrato.</div>
       ) : p.status === "prazo_pedido" ? (
         <div className="aviso atencao" style={{ marginBottom: 16 }}>Pedido de prazo até {dataExtenso(p.prazo_pedido!.data)} registrado. Vamos confirmar a nova data com você.</div>
       ) : expirada ? (
@@ -51,7 +52,8 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
 
       {["enviada", "prazo_pedido"].includes(p.status) && (
         <AcoesCliente token={token} podeAceitar={!expirada} contato={{ nome: p.dados.contato_nome, cargo: p.dados.contato_cargo, email: p.dados.contato_email }}
-          minData={somaDias(hojeISO(), 1)} sugestao={somaDias(p.validade < hojeISO() ? hojeISO() : p.validade, 15)} />
+          minData={somaDias(hojeISO(), 1)} sugestao={somaDias(p.validade < hojeISO() ? hojeISO() : p.validade, 15)}
+          escolherOnboarding={onboardingDe(p.dados) === "ambos"} />
       )}
     </main>
   );

@@ -3,7 +3,7 @@
  * Linguagem: consultiva, sem promessa de resultado; números sempre como estimativa.
  */
 import { retorno } from "./simulador";
-import { PACOTES_PROPOSTA, TARIFAS, type DadosProposta } from "./proposta-tipos";
+import { ONBOARDING, PACOTES_PROPOSTA, TARIFAS, onboardingDe, type DadosProposta } from "./proposta-tipos";
 
 const brl = (v: number) => "R$ " + Math.round(v).toLocaleString("pt-BR");
 const brlCent = (v: number) => v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -13,7 +13,10 @@ export const dataExtenso = (iso: string) =>
   new Date(iso + "T12:00:00").toLocaleDateString("pt-BR", { day: "numeric", month: "long", year: "numeric" });
 
 export type Linha = [string, string];
-export type Secao = { titulo: string; texto?: string; linhas?: Linha[]; destaque?: Linha; itens?: string[]; nota?: string; tabela?: { cab: [string, string]; linhas: Linha[] } };
+export type Secao = { titulo: string; texto?: string; linhas?: Linha[]; destaque?: Linha; itens?: string[]; nota?: string;
+  tabela?: { cab: [string, string]; linhas: Linha[] };
+  comparativo?: { cab: string[]; linhas: string[][] }; // tabela de várias colunas, alinhada à esquerda
+  numerada?: boolean };
 
 export type Remetente = { nome: string; email: string; whatsapp?: string };
 
@@ -57,10 +60,39 @@ export function conteudoProposta(d: DadosProposta, numero: string, emitida: stri
       "Cobrança recorrente por cartão, Pix ou boleto, com repasse automático para a conta da concessionária.",
       "Portal do cliente para acompanhar o plano e as revisões.",
       "Indicadores de receita recorrente, adesão, inadimplência, cancelamentos e visitas à oficina.",
-      `Implantação em até ${d.implantacao_dias} dias corridos e treinamento inicial de ${d.onboarding_horas} horas, em formato ${d.onboarding_formato}.`,
       "Suporte em dias úteis, das 9h às 18h.",
     ],
   });
+
+  const onb = onboardingDe(d as DadosProposta & { onboarding_formato?: string });
+  if (onb === "ambos") {
+    const c = ONBOARDING.consultivo, o = ONBOARDING.online;
+    secoes.push({
+      titulo: "Onboarding: dois caminhos até a primeira venda",
+      texto: "Os dois formatos terminam no mesmo lugar: planos no ar, time treinado e a primeira venda conferida de ponta a ponta. A diferença está em quanto do trabalho a Veilig faz junto com vocês. A escolha pode ser feita no aceite desta proposta.",
+      comparativo: {
+        cab: ["", "Consultivo", "Online"],
+        linhas: [
+          ["Formato", "Encontros presenciais nos marcos e acompanhamento semanal", "Sessões por vídeo, formulários e materiais gravados"],
+          ["Até o go-live", "Cerca de 6 semanas", "Cerca de 3 semanas"],
+          ["Desenho dos planos", "Em conjunto, a partir do diagnóstico dos custos da oficina", "Proposta Veilig a partir de modelos, validada em uma sessão"],
+          ["Treinamento", "Presencial por perfil, com simulação de balcão", "Online por perfil, ao vivo e gravado"],
+          ["Go-live", "Time Veilig na loja na primeira semana de vendas", "Suporte remoto na primeira semana de vendas"],
+          ["Acompanhamento", "90 dias, com revisão de preço aos 30 dias", "30 dias, com dois check-ins de resultado"],
+          ["Indicado para", c.indicado, o.indicado],
+        ],
+      },
+      nota: "Nos dois formatos o go-live só acontece com planos e minuta do contrato aprovados, conta no Asaas aprovada, venda-teste concluída com repasse conferido e time treinado por perfil.",
+    });
+  } else {
+    const f = ONBOARDING[onb];
+    secoes.push({
+      titulo: `Onboarding ${f.nome}: ${f.duracao}`,
+      texto: f.resumo,
+      comparativo: { cab: ["Quando", "O que acontece"], linhas: f.etapas.map(([a, b]) => [a, b]) },
+      nota: `${f.acompanhamento} O go-live só acontece com planos e minuta do contrato aprovados, conta no Asaas aprovada, venda-teste concluída com repasse conferido e time treinado. A abertura da conta no Asaas tem verificação própria e costuma ser o item que mais atrasa: vale começar no kickoff.`,
+    });
+  }
 
   const setupTexto = d.setup_total > 0
     ? `${brlCent(d.setup_total)}, em 3 parcelas: na assinatura, no Go-Live e 30 dias depois`
@@ -94,11 +126,13 @@ export function conteudoProposta(d: DadosProposta, numero: string, emitida: stri
 
   secoes.push({
     titulo: "Próximos passos",
+    numerada: true,
     itens: [
       "Aceite desta proposta, pelo botão no link ou respondendo ao e-mail.",
       "Envio e assinatura do contrato, com estas condições no Anexo I — Condições Comerciais.",
       "Abertura da conta de recebimento no Asaas, em nome da concessionária.",
-      "Implantação da plataforma e treinamento das equipes.",
+      onb === "ambos" ? "Escolha do formato de onboarding e indicação do ponto focal da concessionária." : "Indicação do ponto focal da concessionária e agendamento do kickoff.",
+      `Onboarding ${onb === "ambos" ? "no formato escolhido" : ONBOARDING[onb].nome.toLowerCase()}: planos, parametrização, treinamento e venda-teste.`,
       "Go-Live: início da venda dos planos.",
     ],
   });

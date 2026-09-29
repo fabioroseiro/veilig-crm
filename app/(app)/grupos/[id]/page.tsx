@@ -8,7 +8,8 @@ import { FormAcao, Enviar } from "@/components/FormAcao";
 import { Seletor, BotaoAcao } from "@/components/Seletor";
 import { iniciarUm, pararUm } from "@/lib/acoes-cadencia";
 import { planoDe, NOME_CADENCIA, type TipoCadencia } from "@/lib/plano";
-import { propostasDoGrupo, STATUS_PROPOSTA, PACOTES_PROPOSTA } from "@/lib/proposta";
+import { propostasDoGrupo } from "@/lib/proposta";
+import { STATUS_PROPOSTA, PACOTES_PROPOSTA } from "@/lib/proposta-tipos";
 import { criarProposta } from "@/lib/acoes-proposta";
 
 export const dynamic = "force-dynamic";

@@ -61,7 +61,7 @@ export function gerarPdfProposta(c: ConteudoProposta): Promise<Buffer> {
   const secao = (s: Secao) => {
     // Seções curtas não se dividem entre páginas.
     const est = 44 + (s.texto ? 20 : 0) + (s.linhas?.length ?? 0) * 26 + (s.destaque ? 50 : 0) + (s.itens?.length ?? 0) * 22
-      + (s.tabela ? 30 + s.tabela.linhas.length * 18 : 0) + (s.nota ? 34 : 0);
+      + (s.tabela ? 30 + s.tabela.linhas.length * 18 : 0) + (s.comparativo ? 30 + s.comparativo.linhas.length * 34 : 0) + (s.nota ? 34 : 0);
     garantir(est < 420 ? est : 80);
     doc.moveDown(1.1);
     const y = doc.y;
@@ -82,7 +82,7 @@ export function gerarPdfProposta(c: ConteudoProposta): Promise<Buffer> {
     if (s.itens) {
       doc.moveDown(0.2);
       s.itens.forEach((it, i) => {
-        const marcador = s.titulo === "Próximos passos" ? `${i + 1}.` : "•";
+        const marcador = s.numerada ? `${i + 1}.` : "•";
         doc.font("R").fontSize(10.5);
         const h = doc.heightOfString(it, { width: W - 18, lineGap: 2 }) + 5;
         garantir(h);
@@ -107,6 +107,31 @@ export function gerarPdfProposta(c: ConteudoProposta): Promise<Buffer> {
         doc.text(v, L + W * 0.4, y + 4, { width: W * 0.6 - 8, align: "right" });
         doc.moveTo(L, y + 18).lineTo(L + W, y + 18).lineWidth(0.5).strokeColor(COR.line).stroke();
         doc.y = y + 18;
+      }
+    }
+    if (s.comparativo) {
+      const cols = s.comparativo.cab.length;
+      // Primeira coluna mais estreita quando é rótulo; as demais dividem o resto.
+      const w0 = cols === 2 ? W * 0.22 : W * 0.24;
+      const wn = (W - w0) / (cols - 1);
+      const larg = (i: number) => (i === 0 ? w0 : wn);
+      const x = (i: number) => L + (i === 0 ? 0 : w0 + (i - 1) * wn);
+      const alturaLinha = (cel: string[], fonte: string, tam: number) =>
+        Math.max(...cel.map((t, i) => { doc.font(i === 0 && fonte === "R" ? "S" : fonte).fontSize(tam); return doc.heightOfString(t || " ", { width: larg(i) - 12 }); })) + 12;
+      doc.moveDown(0.5);
+      const hc = alturaLinha(s.comparativo.cab, "S", 9);
+      garantir(hc + 30);
+      let y = doc.y;
+      doc.rect(L, y, W, hc).fill(COR.soft);
+      s.comparativo.cab.forEach((t, i) => doc.font("S").fontSize(9).fillColor(COR.muted).text(t, x(i) + 6, y + 6, { width: larg(i) - 12 }));
+      doc.y = y + hc;
+      for (const cel of s.comparativo.linhas) {
+        const h = alturaLinha(cel, "R", 9.5);
+        garantir(h);
+        y = doc.y;
+        cel.forEach((t, i) => doc.font(i === 0 ? "S" : "R").fontSize(9.5).fillColor(i === 0 ? COR.ink : COR.ink).text(t, x(i) + 6, y + 6, { width: larg(i) - 12 }));
+        doc.moveTo(L, y + h).lineTo(L + W, y + h).lineWidth(0.5).strokeColor(COR.line).stroke();
+        doc.y = y + h;
       }
     }
     if (s.nota) {

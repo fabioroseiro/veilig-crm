@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { q1 } from "@/lib/db";
-import { propostaPorId, remetenteProposta, emitidaISO, vencida, PACOTES_PROPOSTA, STATUS_PROPOSTA } from "@/lib/proposta";
+import { propostaPorId, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
+import { PACOTES_PROPOSTA, STATUS_PROPOSTA, ONBOARDING, OPCOES_ONBOARDING, onboardingDe, onboardingSugerido } from "@/lib/proposta-tipos";
 import { conteudoProposta, dataExtenso } from "@/lib/proposta-conteudo";
 import { envioReal } from "@/lib/correio";
 import { hojeISO, somaDias } from "@/lib/regras";
@@ -50,7 +51,7 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
       </div>
 
       {p.status === "aceita" && (
-        <div className="aviso ok">Aceita em {quando(p.aceita_em)} por {p.aceite?.nome}{p.aceite?.cargo ? ` (${p.aceite.cargo})` : ""}{p.aceite?.email ? `, ${p.aceite.email}` : ""}. Próximo passo: enviar o contrato.</div>
+        <div className="aviso ok">Aceita em {quando(p.aceita_em)}{p.aceite?.onboarding ? `, com onboarding ${ONBOARDING[p.aceite.onboarding].nome}` : ""}, por {p.aceite?.nome}{p.aceite?.cargo ? ` (${p.aceite.cargo})` : ""}{p.aceite?.email ? `, ${p.aceite.email}` : ""}. Próximo passo: enviar o contrato.</div>
       )}
       {p.status === "prazo_pedido" && p.prazo_pedido && (
         <div className="aviso atencao">{p.prazo_pedido.motivo ? `"${p.prazo_pedido.motivo}" — ` : ""}pedido de prazo até {dataExtenso(p.prazo_pedido.data)}. Para aceitar, prorrogue a validade abaixo.</div>
@@ -90,14 +91,13 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
                   <label className="campo"><span>Observação do setup</span><input name="setup_obs" defaultValue={d.setup_obs} placeholder="Ex.: condição de lançamento" /></label>
                   <label className="campo"><span>Taxa de sucesso (%)</span><input name="fee" type="number" min={0} max={100} step="0.1" defaultValue={d.fee} required /></label>
                   <label className="campo"><span>Vencimento das faturas (dia)</span><input name="vencimento_dia" type="number" min={1} max={28} defaultValue={d.vencimento_dia} required /></label>
-                  <label className="campo"><span>Implantação (dias corridos)</span><input name="implantacao_dias" type="number" min={1} defaultValue={d.implantacao_dias} required /></label>
-                  <label className="campo"><span>Treinamento (horas)</span><input name="onboarding_horas" type="number" min={1} defaultValue={d.onboarding_horas} required /></label>
-                  <label className="campo"><span>Formato do treinamento</span>
-                    <select name="onboarding_formato" defaultValue={d.onboarding_formato}><option value="remoto">Remoto</option><option value="presencial">Presencial</option></select>
-                  </label>
                   <label className="campo"><span>Válida até</span><input name="validade" type="date" min={hojeISO()} defaultValue={p.validade} required /></label>
                 </div>
-                <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>Ao trocar o pacote, o recorrente e o prazo de implantação seguem a tabela, se você não tiver mudado os valores à mão.</p>
+                <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>Ao trocar o pacote, o recorrente segue a tabela, se você não tiver mudado o valor à mão.</p>
+                <label className="campo"><span>Onboarding</span>
+                  <select name="onboarding" defaultValue={onboardingDe(d)}>{Object.entries(OPCOES_ONBOARDING).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                </label>
+                <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>Sugestão pelo tamanho do piloto: {ONBOARDING[onboardingSugerido(d.lojas)].nome}. Com &quot;os dois&quot;, a proposta mostra a comparação e o cliente escolhe no aceite.</p>
                 <label className="campo"><span>Observações (aparecem na proposta)</span><textarea name="observacoes" defaultValue={d.observacoes} placeholder="Ex.: piloto começa pela loja da Barra" /></label>
                 <Enviar>Salvar</Enviar>
               </FormAcao>
@@ -153,6 +153,11 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
                   <label className="campo"><span>E-mail</span><input name="email" defaultValue={d.contato_email} /></label>
                   <label className="campo"><span>Como</span><select name="como" defaultValue="e-mail"><option>e-mail</option><option>WhatsApp</option><option>reunião</option></select></label>
                 </div>
+                {onboardingDe(d) === "ambos" && (
+                  <label className="campo"><span>Onboarding escolhido</span>
+                    <select name="onboarding" defaultValue={onboardingSugerido(d.lojas)}><option value="consultivo">Consultivo</option><option value="online">Online</option></select>
+                  </label>
+                )}
                 <Enviar className="btn btn-mini btn-ink">Registrar aceite</Enviar>
               </FormAcao>
             </div>

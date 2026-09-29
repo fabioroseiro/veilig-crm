@@ -4,8 +4,9 @@ import { FormAcao, Enviar } from "./FormAcao";
 import { aceitarProposta, pedirPrazo } from "@/lib/acoes-proposta-cliente";
 
 /** Aceitar a proposta ou pedir mais prazo, na página do cliente. */
-export function AcoesCliente({ token, podeAceitar, contato, minData, sugestao }: {
+export function AcoesCliente({ token, podeAceitar, contato, minData, sugestao, escolherOnboarding }: {
   token: string; podeAceitar: boolean; contato: { nome: string; cargo: string; email: string }; minData: string; sugestao: string;
+  escolherOnboarding?: boolean;
 }) {
   const [aba, setAba] = useState<"aceitar" | "prazo" | null>(null);
   return (
@@ -22,6 +23,13 @@ export function AcoesCliente({ token, podeAceitar, contato, minData, sugestao }:
             <label className="campo"><span>Cargo</span><input name="cargo" required defaultValue={contato.cargo} /></label>
             <label className="campo"><span>E-mail</span><input name="email" type="email" required defaultValue={contato.email} /></label>
           </div>
+          {escolherOnboarding && (
+            <fieldset className="escolha-onb">
+              <legend>Formato de onboarding</legend>
+              <label className="check"><input type="radio" name="onboarding" value="consultivo" required /> Consultivo: cerca de 6 semanas, com encontros presenciais nos marcos</label>
+              <label className="check"><input type="radio" name="onboarding" value="online" /> Online: cerca de 3 semanas, por vídeo</label>
+            </fieldset>
+          )}
           <label className="check"><input type="checkbox" name="concordo" required /> Li e aceito as condições desta proposta, sujeitas à assinatura do contrato.</label>
           <div><Enviar>Confirmar aceite</Enviar></div>
         </FormAcao>

@@ -9,9 +9,10 @@ import { hojeISO, somaDias } from "./regras";
 import { envioReal, transportador } from "./correio";
 import { urlApp } from "./mensagem";
 import {
-  PACOTES_PROPOSTA, novaProposta, propostaPorId, remetenteProposta, tabela, type DadosProposta, type Pacote, type Proposta,
+  novaProposta, propostaPorId, remetenteProposta, tabela, type Proposta,
 } from "./proposta";
 import { conteudoProposta, dataExtenso } from "./proposta-conteudo";
+import { PACOTES_PROPOSTA, OPCOES_ONBOARDING, ONBOARDING, onboardingDe, type Onboarding, type DadosProposta, type Pacote } from "./proposta-tipos";
 import { gerarPdfProposta } from "./proposta-pdf";
 
 type Estado = { ok?: string; erro?: string } | null | undefined;
@@ -41,18 +42,15 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
   const [t, cfg] = await Promise.all([tabela(), lerConfig()]);
   const pacote = (s(f, "pacote") in PACOTES_PROPOSTA ? s(f, "pacote") : "essencial") as Pacote;
   let recorrente = n(f, "recorrente_loja");
-  let implantacao = n(f, "implantacao_dias");
   if (pacote !== p.dados.pacote) {
     const padraoAntigo = cfg.precos[p.dados.pacote] ?? t.recorrente[p.dados.pacote];
     if (recorrente === padraoAntigo) recorrente = cfg.precos[pacote] ?? t.recorrente[pacote];
-    if (implantacao === t.implantacao[p.dados.pacote]) implantacao = t.implantacao[pacote];
   }
   const d: DadosProposta = {
     empresa: s(f, "empresa"), contato_nome: s(f, "contato_nome"), contato_cargo: s(f, "contato_cargo"), contato_email: s(f, "contato_email").toLowerCase(),
     marcas: s(f, "marcas"), lojas: Math.round(n(f, "lojas")), vendas_loja: Math.round(n(f, "vendas_loja")), ticket: n(f, "ticket"),
     pacote, recorrente_loja: recorrente, setup_total: n(f, "setup_total"), setup_obs: s(f, "setup_obs"), fee: n(f, "fee"),
-    implantacao_dias: Math.round(implantacao), onboarding_horas: Math.round(n(f, "onboarding_horas")),
-    onboarding_formato: s(f, "onboarding_formato") === "presencial" ? "presencial" : "remoto",
+    onboarding: (s(f, "onboarding") in OPCOES_ONBOARDING ? s(f, "onboarding") : "online") as Onboarding,
     vencimento_dia: Math.round(n(f, "vencimento_dia")), mostrar_simulacao: f.get("mostrar_simulacao") === "on", observacoes: s(f, "observacoes"),
   };
   const validade = s(f, "validade");
@@ -64,7 +62,6 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
   if (!(d.recorrente_loja >= 0)) erros.push("recorrente por loja");
   if (!(d.setup_total >= 0)) erros.push("setup");
   if (!(d.fee >= 0 && d.fee <= 100)) erros.push("taxa de sucesso");
-  if (!(d.implantacao_dias >= 1)) erros.push("prazo de implantação");
   if (!(d.vencimento_dia >= 1 && d.vencimento_dia <= 28)) erros.push("dia de vencimento (1 a 28)");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(validade) || validade < hojeISO()) erros.push("validade (data futura)");
   if (d.contato_email && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(d.contato_email)) erros.push("e-mail do contato");
@@ -205,12 +202,20 @@ export async function registrarAceite(id: string, _: Estado, f: FormData): Promi
   const nome = s(f, "nome"), cargo = s(f, "cargo"), como = s(f, "como");
   if (nome.length < 3) return { erro: "Informe quem aceitou." };
   await q("UPDATE proposta SET status='aceita', aceita_em=now(), aceite=$2, atualizado_em=now() WHERE id=$1",
-    [id, { nome, cargo, email: s(f, "email"), ip: null, registrado_por: u.nome, como }]);
-  await registrar(p.grupo_id, "email", `Proposta ${p.numero} aceita por ${nome}${cargo ? ` (${cargo})` : ""}${como ? `, por ${como}` : ""}`, u.id);
+    [id, { nome, cargo, email: s(f, "email"), ip: null, registrado_por: u.nome, como, ...formatoEscolhido(p, f) }]);
+  const fmt = formatoEscolhido(p, f).onboarding;
+  await registrar(p.grupo_id, "email", `Proposta ${p.numero} aceita por ${nome}${cargo ? ` (${cargo})` : ""}${como ? `, por ${como}` : ""}${fmt ? `. Onboarding ${ONBOARDING[fmt].nome}` : ""}`, u.id);
   await q("UPDATE tarefa SET feita_em=now(), resultado='Proposta aceita' WHERE grupo_id=$1 AND feita_em IS NULL AND titulo LIKE $2", [p.grupo_id, `Acompanhar a proposta ${p.numero}%`]);
   await aplicarEtapa(p.grupo_id, 6, u.id, true);
   await q(`INSERT INTO tarefa (grupo_id, tipo, titulo, vence_em, usuario_id) VALUES ($1,'email',$2,$3,$4)`,
     [p.grupo_id, `Enviar o contrato: proposta ${p.numero} aceita`, hojeISO(), (await closerId()) ?? u.id]);
   atualizar(p);
   return { ok: "Aceite registrado." };
+}
+
+/** Quando a proposta oferecia os dois formatos, guarda o que o cliente escolheu. */
+function formatoEscolhido(p: Proposta, f: FormData): { onboarding?: "consultivo" | "online" } {
+  if (onboardingDe(p.dados) !== "ambos") return {};
+  const v = f.get("onboarding");
+  return v === "consultivo" || v === "online" ? { onboarding: v } : {};
 }

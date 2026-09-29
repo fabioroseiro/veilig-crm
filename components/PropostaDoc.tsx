@@ -26,7 +26,7 @@ export function PropostaDoc({ c }: { c: ConteudoProposta }) {
               </dl>
             )}
             {s.destaque && <div className="prop-destaque"><span>{s.destaque[0]}</span><strong>{s.destaque[1]}</strong></div>}
-            {s.itens && (s.titulo === "Próximos passos"
+            {s.itens && (s.numerada
               ? <ol>{s.itens.map((i) => <li key={i}>{i}</li>)}</ol>
               : <ul>{s.itens.map((i) => <li key={i}>{i}</li>)}</ul>)}
             {s.tabela && (
@@ -34,6 +34,14 @@ export function PropostaDoc({ c }: { c: ConteudoProposta }) {
                 <thead><tr><th>{s.tabela.cab[0]}</th><th>{s.tabela.cab[1]}</th></tr></thead>
                 <tbody>{s.tabela.linhas.map(([a, b]) => <tr key={a}><td>{a}</td><td>{b}</td></tr>)}</tbody>
               </table>
+            )}
+            {s.comparativo && (
+              <div className="prop-rolagem">
+                <table className={`prop-comparativo c${s.comparativo.cab.length}`}>
+                  <thead><tr>{s.comparativo.cab.map((c, i) => <th key={i}>{c}</th>)}</tr></thead>
+                  <tbody>{s.comparativo.linhas.map((l) => <tr key={l.join("|")}>{l.map((c, i) => <td key={i} data-rotulo={s.comparativo!.cab[i]}>{c}</td>)}</tr>)}</tbody>
+                </table>
+              </div>
             )}
             {s.nota && <p className="prop-nota">{s.nota}</p>}
           </section>

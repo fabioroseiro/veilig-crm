@@ -157,3 +157,21 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
   .prop-linhas dd{text-align:left}
   .prop-tabela{font-size:13px}
 }
+.prop-rolagem{overflow-x:auto;margin-top:12px}
+.prop-comparativo{width:100%;border-collapse:collapse;font-size:14px}
+.prop-comparativo th{background:var(--soft);color:var(--muted);text-align:left;padding:8px 10px;font-weight:600}
+.prop-comparativo td{padding:9px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+.prop-comparativo td:first-child{font-weight:600;white-space:nowrap}
+.prop-comparativo.c3{min-width:560px}
+@media (max-width:640px){.prop-comparativo.c2 td:first-child{white-space:normal;width:30%}}
+.escolha-onb{border:1px solid var(--line);border-radius:8px;padding:10px 12px;margin:0 0 10px;display:grid;gap:6px}
+.escolha-onb legend{font-size:13px;font-weight:600;padding:0 4px}
+@media (max-width:640px){
+  .prop-comparativo.c3{min-width:0}
+  .prop-comparativo.c3 thead{display:none}
+  .prop-comparativo.c3,.prop-comparativo.c3 tbody,.prop-comparativo.c3 tr,.prop-comparativo.c3 td{display:block;width:100%}
+  .prop-comparativo.c3 tr{border-bottom:1px solid var(--line);padding:8px 0}
+  .prop-comparativo.c3 td{border:0;padding:2px 0}
+  .prop-comparativo.c3 td:first-child{white-space:normal}
+  .prop-comparativo.c3 td+td::before{content:attr(data-rotulo) ": ";font-weight:600;color:var(--muted)}
+}
