@@ -78,7 +78,7 @@ export async function parar(grupoId: string, motivo: string) {
 // ---------------- Avanço dos toques ----------------
 
 type Cad = { id: string; grupo_id: string; tipo: TipoCadencia; ciclo: number; porte: "A" | "B" | "C"; passo: number;
-  nome: string; origem: string | null; segmento: string | null; temperatura: string; situacao: string; estrategico: boolean; etapa: number;
+  nome: string; origem: string | null; origem_interna: string | null; segmento: string | null; temperatura: string; situacao: string; estrategico: boolean; etapa: number;
   responsavel_id: string | null; contato_id: string | null; contato_nome: string | null; email: string | null; email_status: string | null; whatsapp: string | null };
 
 async function modelo(chave: string) {
@@ -104,7 +104,8 @@ async function executar(c: Cad, p: Passo): Promise<boolean> {
     return true;
   }
   let chave = p.chave!;
-  if (chave === "frio_1" && c.contato_id && (await jaRecebeuToque1(c.contato_id))) chave = "frio_1_ciclo2";
+  // Quem já recebeu o toque 1, ou já falou com a Veilig pelo site, recebe o texto de retomada.
+  if (chave === "frio_1" && ((c.contato_id && (await jaRecebeuToque1(c.contato_id))) || c.origem_interna?.startsWith("Site"))) chave = "frio_1_ciclo2";
   const m = await modelo(chave);
   if (!m) { await atividade(c.grupo_id, "sistema", `${prefixo}: modelo ${chave} não encontrado`); return true; }
   if (!m.aprovado) {
@@ -214,7 +215,7 @@ export async function processarPassos() {
   }
 
   const cads = await q<Cad>(
-    `SELECT k.id, k.grupo_id, k.tipo, k.ciclo, k.porte, k.passo, g.nome, g.origem, g.segmento, g.temperatura, g.situacao, g.estrategico, g.etapa,
+    `SELECT k.id, k.grupo_id, k.tipo, k.ciclo, k.porte, k.passo, g.nome, g.origem, g.origem_interna, g.segmento, g.temperatura, g.situacao, g.estrategico, g.etapa,
             g.responsavel_id, c.id AS contato_id, c.nome AS contato_nome, c.email, c.email_status, c.whatsapp
        FROM cadencia k JOIN grupo g ON g.id = k.grupo_id
        LEFT JOIN contato c ON c.grupo_id = g.id AND c.principal

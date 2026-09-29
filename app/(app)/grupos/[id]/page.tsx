@@ -19,7 +19,7 @@ type Contato = { id: string; nome: string | null; cargo: string | null; email: s
   whatsapp: string | null; telefone: string | null; principal: boolean };
 
 const STATUS_EMAIL: Record<string, string> = { ok: "", corrigir: "e-mail com erro", ausente: "sem e-mail", devolvido: "e-mail voltou", descadastrado: "pediu para sair" };
-const TIPOS_ATIV: Record<string, string> = { nota: "Nota", whatsapp: "WhatsApp", ligacao: "Ligação", email: "E-mail", reuniao: "Reunião", etapa: "Etapa", temperatura: "Temperatura", sistema: "Sistema" };
+const TIPOS_ATIV: Record<string, string> = { nota: "Nota", whatsapp: "WhatsApp", ligacao: "Ligação", email: "E-mail", reuniao: "Reunião", etapa: "Etapa", temperatura: "Temperatura", sistema: "Sistema", site: "Site" };
 
 export default async function Ficha({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
