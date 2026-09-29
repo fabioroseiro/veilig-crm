@@ -74,14 +74,15 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
 const escapar = (t: string) => t.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
 function htmlEmail(texto: string, link: string, rem: { nome: string; email: string; whatsapp?: string }) {
-  const paragrafos = texto.split(/\n{2,}/).map((p) => {
-    if (p.includes("[Link da proposta]")) {
-      return `<p style="margin:0 0 16px"><a href="${link}" style="display:inline-block;background:#173b43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">Ver a proposta</a></p>`;
-    }
-    return `<p style="margin:0 0 14px">${escapar(p).replace(/\n/g, "<br>")}</p>`;
+  const botao = `<a href="${link}" style="display:inline-block;background:#173b43;color:#ffffff;text-decoration:none;font-weight:bold;padding:12px 20px;border-radius:8px">Ver a proposta</a>`;
+  // O navegador envia as quebras de linha do formulário como \r\n: normaliza antes de separar os parágrafos.
+  const paragrafos = texto.replace(/\r\n?/g, "\n").split(/\n\s*\n/).map((p) => p.trim()).filter(Boolean).map((p) => {
+    // O marcador vira o botão; o texto ao redor dele continua no e-mail.
+    const html = p.split("[Link da proposta]").map((t) => escapar(t.trim()).replace(/\n/g, "<br>")).join(`</p><p style="margin:0 0 16px">${botao}</p><p style="margin:0 0 14px">`);
+    return `<p style="margin:0 0 14px">${html}</p>`.replace(/<p style="margin:0 0 14px"><\/p>/g, "");
   }).join("");
   const assinatura = [rem.nome, "Veilig · veilig.com.br", ...(rem.whatsapp ? [`WhatsApp ${rem.whatsapp}`] : [])].map(escapar).join("<br>");
-  return `<div style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#173b43;max-width:600px">${paragrafos}<p style="margin:18px 0 0;color:#58707a;font-size:14px">${assinatura}</p></div>`;
+  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body><div lang="pt-BR" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#173b43;max-width:600px">${paragrafos}<p style="margin:18px 0 0;color:#58707a;font-size:14px">${assinatura}</p></div></body></html>`;
 }
 
 /** Envia a proposta pela caixa do closer, com o PDF anexo e o link para aceite. */
@@ -94,7 +95,7 @@ export async function enviarProposta(id: string, _: Estado, f: FormData): Promis
   const para = s(f, "para").toLowerCase();
   const cc = s(f, "cc").toLowerCase();
   const assunto = s(f, "assunto");
-  const mensagem = s(f, "mensagem");
+  const mensagem = s(f, "mensagem").replace(/\r\n?/g, "\n");
   const valido = (e: string) => /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e);
   if (!valido(para)) return { erro: "Informe um e-mail válido para o envio." };
   const ccs = cc ? cc.split(/[,;\s]+/).filter(Boolean) : [];
