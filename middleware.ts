@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { COOKIE, lerToken } from "./lib/sessao";
 
-const LIVRES = ["/login", "/primeiro-acesso", "/sair", "/api/cron", "/api/site"];
+const LIVRES = ["/login", "/primeiro-acesso", "/sair", "/api/cron", "/api/site", "/p"];
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

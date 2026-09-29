@@ -6,6 +6,7 @@ import bcrypt from "bcryptjs";
 import { q, q1, tx } from "./db";
 import { exigirUsuario } from "./auth";
 import { lerConfig } from "./config";
+import { aplicarEtapa } from "./funil";
 import { COOKIE } from "./sessao";
 import { ETAPAS, ETAPA_PASSA_CLOSER, ETAPA_VIRA_QUENTE, TEMPERATURAS, hojeISO, somaDias } from "./regras";
 import { analisarEmail, normalizarCelular } from "./contatos";
@@ -44,25 +45,7 @@ export async function trocarSenha(_: unknown, f: FormData) {
 /** Muda a etapa aplicando as regras: Agenda+ vira Quente; Proposta passa para o closer. */
 export async function mudarEtapa(grupoId: string, etapa: number) {
   const u = await exigirUsuario();
-  if (!ETAPAS[etapa]) return;
-  const g = await q1<{ etapa: number; temperatura: string; responsavel_id: string | null; situacao: string }>(
-    "SELECT etapa, temperatura, responsavel_id, situacao FROM grupo WHERE id=$1", [grupoId]);
-  if (!g || g.etapa === etapa) return;
-  const cfg = await lerConfig();
-  const closer = await q1<{ id: string; nome: string }>("SELECT id, nome FROM usuario WHERE lower(email)=lower($1)", [cfg.closer_email]);
-
-  await q("UPDATE grupo SET etapa=$2, situacao='ativo', pausado_ate=NULL, atualizado_em=now() WHERE id=$1", [grupoId, etapa]);
-  await registrar(grupoId, "etapa", `Etapa: ${ETAPAS[g.etapa].nome} → ${ETAPAS[etapa].nome}`, u.id);
-
-  if (etapa >= ETAPA_VIRA_QUENTE && g.temperatura !== "quente" && g.temperatura !== "oscilante") {
-    await q("UPDATE grupo SET temperatura='quente' WHERE id=$1", [grupoId]);
-    await registrar(grupoId, "temperatura", `Temperatura: ${TEMPERATURAS[g.temperatura as keyof typeof TEMPERATURAS].nome} → Quente (etapa ${ETAPAS[etapa].nome})`, null);
-  }
-  if (etapa >= ETAPA_PASSA_CLOSER && closer && g.responsavel_id !== closer.id) {
-    await q("UPDATE grupo SET responsavel_id=$2 WHERE id=$1", [grupoId, closer.id]);
-    await q("UPDATE tarefa SET usuario_id=$2 WHERE grupo_id=$1 AND feita_em IS NULL", [grupoId, closer.id]);
-    await registrar(grupoId, "sistema", `Lead passou para ${closer.nome} (closer), a partir de ${ETAPAS[ETAPA_PASSA_CLOSER].nome}`, null);
-  }
+  await aplicarEtapa(grupoId, etapa, u.id);
   atualizarTelas(grupoId);
 }
 

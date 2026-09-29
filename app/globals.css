@@ -111,3 +111,49 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
   .principal{padding:18px 14px 50px}
   .g2,.g3,.g4,.ficha{grid-template-columns:1fr}
 }
+
+/* Proposta (link do cliente e pré-visualização) */
+.prop{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;max-width:820px;margin:0 auto}
+.prop-topo{background:var(--ink);color:#fff;padding:28px 36px 26px}
+.prop-marca{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+.prop-marca span{color:var(--acc);letter-spacing:.35em;font-weight:300;font-size:15px}
+.prop-topo h1{font-size:28px;font-weight:800;margin:0}
+.prop-num{color:#cfe3e8;font-size:13px;margin-top:4px}
+.prop-corpo{padding:28px 36px 36px}
+.prop-para .k{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.prop-para .empresa{font-size:20px;font-weight:700}
+.prop-intro{font-size:16px;margin:18px 0 8px}
+.prop-secao{margin-top:28px}
+.prop-secao h2{font-size:18px;border-left:3px solid var(--acc);padding-left:10px;margin:0 0 10px}
+.prop-linhas{margin:0}
+.prop-linhas>div{display:flex;justify-content:space-between;gap:16px;padding:9px 0;border-bottom:1px solid var(--line)}
+.prop-linhas dt{color:var(--muted)}
+.prop-linhas dd{margin:0;font-weight:600;text-align:right;font-variant-numeric:tabular-nums}
+.prop-destaque{display:flex;justify-content:space-between;align-items:center;gap:16px;background:var(--acc-soft);border-radius:8px;padding:12px 14px;margin-top:10px}
+.prop-destaque span{font-weight:600}
+.prop-destaque strong{font-size:20px;font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.prop-secao ul,.prop-secao ol{padding-left:20px;margin:6px 0}
+.prop-secao li{margin-bottom:5px}
+.prop-tabela{width:100%;border-collapse:collapse;margin-top:12px;font-size:14px}
+.prop-tabela th{background:var(--soft);color:var(--muted);text-align:left;padding:7px 10px;font-weight:600}
+.prop-tabela th:last-child,.prop-tabela td:last-child{text-align:right}
+.prop-tabela td{padding:7px 10px;border-bottom:1px solid var(--line)}
+.prop-nota{font-size:13px;color:var(--muted);margin-top:8px}
+.prop-validade{border:1px solid var(--acc);border-radius:8px;padding:12px 14px;margin-top:30px}
+.prop-assinatura{margin-top:22px;font-size:14px}
+.prop-assinatura .nome{font-weight:700;font-size:15px}
+.cliente{max-width:820px;margin:0 auto;padding:24px 16px 60px}
+.cliente .acoes-cliente{margin-top:18px}
+.status-prop{display:inline-block;font-size:12px;font-weight:700;padding:2px 9px;border-radius:99px;background:var(--soft)}
+.status-prop.aceita{background:#dcf5e8;color:var(--ok)}
+.status-prop.enviada{background:var(--acc-soft);color:var(--acc-2)}
+.status-prop.prazo_pedido{background:#fff4d6;color:var(--warn)}
+.status-prop.cancelada{color:var(--muted)}
+.edicao-prop{display:grid;grid-template-columns:minmax(340px,440px) 1fr;gap:20px;align-items:start}
+@media (max-width:1100px){.edicao-prop{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .prop-topo,.prop-corpo{padding-left:18px;padding-right:18px}
+  .prop-linhas>div,.prop-destaque{flex-direction:column;align-items:flex-start;gap:2px}
+  .prop-linhas dd{text-align:left}
+  .prop-tabela{font-size:13px}
+}

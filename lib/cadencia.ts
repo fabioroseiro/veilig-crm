@@ -272,7 +272,7 @@ export async function enviarFila(forcarHorario = false) {
       WHERE e.status = 'fila' ORDER BY e.criado_em LIMIT $1`, [Math.min(POR_RODADA, restante)]);
 
   const t = transportador(c.remetente.email);
-  const real = envioReal();
+  const real = envioReal(c.remetente.email);
   let enviados = 0;
   for (const e of fila) {
     if (e.cad_status && e.cad_status !== "ativa" || (e.email_status && e.email_status !== "ok")) {

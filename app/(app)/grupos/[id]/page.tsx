@@ -8,6 +8,8 @@ import { FormAcao, Enviar } from "@/components/FormAcao";
 import { Seletor, BotaoAcao } from "@/components/Seletor";
 import { iniciarUm, pararUm } from "@/lib/acoes-cadencia";
 import { planoDe, NOME_CADENCIA, type TipoCadencia } from "@/lib/plano";
+import { propostasDoGrupo, STATUS_PROPOSTA, PACOTES_PROPOSTA } from "@/lib/proposta";
+import { criarProposta } from "@/lib/acoes-proposta";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +42,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
   const cad = await q1<{ tipo: TipoCadencia; status: string; porte: "A" | "B" | "C"; passo: number; ciclo: number; proximo_em: string | null; retomar_em: string | null; motivo: string | null }>(
     `SELECT tipo, status, porte, passo, ciclo, to_char(proximo_em,'DD/MM/YYYY') AS proximo_em, to_char(retomar_em,'DD/MM/YYYY') AS retomar_em, motivo
        FROM cadencia WHERE grupo_id=$1 ORDER BY criado_em DESC LIMIT 1`, [id]);
+  const propostas = await propostasDoGrupo(id);
   const pot = potencial(g.num_lojas, g.pacote, cfg.precos, cfg.lojas_piloto);
   const pond = ponderado(pot, g.etapa, g.situacao);
   const temp = TEMPERATURAS[g.temperatura as keyof typeof TEMPERATURAS];
@@ -196,6 +199,23 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
         </div>
 
         <div className="grade">
+          <div className="caixa">
+            <div className="linha" style={{ justifyContent: "space-between", marginBottom: 8 }}>
+              <h2 style={{ margin: 0 }}>Propostas</h2>
+              <BotaoAcao className="btn btn-mini btn-ink" acao={criarProposta.bind(null, id)}>Nova proposta</BotaoAcao>
+            </div>
+            {propostas.length === 0 ? <p className="muted" style={{ fontSize: 13 }}>Nenhuma proposta ainda. A nova proposta já vem preenchida com os dados deste grupo.</p> : (
+              <table><tbody>{propostas.map((p) => (
+                <tr key={p.id}>
+                  <td><Link href={`/grupos/${id}/propostas/${p.id}`}>{p.numero}</Link><div className="muted" style={{ fontSize: 12 }}>{PACOTES_PROPOSTA[p.dados.pacote]?.nome} · {p.dados.lojas} loja{p.dados.lojas > 1 ? "s" : ""}</div></td>
+                  <td><span className={`status-prop ${p.status}`}>{STATUS_PROPOSTA[p.status]}</span>
+                    {p.aberturas > 0 && p.status === "enviada" && <div className="muted" style={{ fontSize: 12 }}>aberta {p.aberturas}×</div>}</td>
+                  <td className="num" style={{ textAlign: "right" }}>{brl(p.dados.recorrente_loja * p.dados.lojas)}/mês</td>
+                </tr>
+              ))}</tbody></table>
+            )}
+          </div>
+
           <div className="caixa">
             <h2>Contatos</h2>
             {contatos.map((c) => (
