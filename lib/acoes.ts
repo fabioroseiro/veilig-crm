@@ -157,7 +157,10 @@ export async function salvarContato(grupoId: string, _: unknown, f: FormData) {
   const zap = telefone ? normalizarCelular(telefone) : null;
   if (telefone && !zap) return { erro: "Celular inválido: informe DDD e número (ex.: 11 99999-0000)." };
   const params = [s(f, "nome"), s(f, "cargo"), email.email, email.status, email.sugestao ?? null, zap, telefone];
-  if (id) await q(`UPDATE contato SET nome=$2, cargo=$3, email=$4, email_status=$5, email_sugestao=$6, whatsapp=$7, telefone=$8 WHERE id=$1 AND grupo_id=$9`, [id, ...params, grupoId]);
+  // Mesmo e-mail de antes: mantém "voltou" e "pediu para sair" (salvar o formulário não pode reativar esse endereço).
+  if (id) await q(`UPDATE contato SET nome=$2, cargo=$3, email=$4,
+      email_status = CASE WHEN lower(coalesce(email,'')) = lower(coalesce($4,'')) AND email_status IN ('devolvido','descadastrado') THEN email_status ELSE $5 END,
+      email_sugestao=$6, whatsapp=$7, telefone=$8 WHERE id=$1 AND grupo_id=$9`, [id, ...params, grupoId]);
   else await q(`INSERT INTO contato (grupo_id, nome, cargo, email, email_status, email_sugestao, whatsapp, telefone, principal)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8, NOT EXISTS (SELECT 1 FROM contato WHERE grupo_id=$1))`, [grupoId, ...params]);
   atualizarTelas(grupoId);
