@@ -208,3 +208,7 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .abas-mini button{font:inherit;font-size:13px;font-weight:600;border:0;background:#fff;color:var(--muted);padding:6px 12px;cursor:pointer}
 .abas-mini button.ativa{background:var(--ink);color:#fff}
 @media (max-width:900px){.kit-apoio{grid-template-columns:1fr}}
+.kit-ramos{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 4px}
+.kit-ramos>div{border-left:3px solid var(--acc);background:var(--acc-soft);border-radius:0 8px 8px 0;padding:8px 10px;font-size:13px}
+.kit-ramos p{margin:3px 0 0}
+@media (max-width:900px){.kit-ramos{grid-template-columns:1fr}}

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { EVITE, FONTE, INDICADORES, OBJECOES, PERGUNTAS, PITCH, PITCH_APOIO, PODE, WHATSAPP, type Segmento } from "@/lib/argumentos";
+import { EVITE, FONTE, INDICADORES, OBJECOES, PERGUNTAS, PITCH, PITCH_APOIO, PITCH_RESPOSTAS, PODE, WHATSAPP, type Segmento } from "@/lib/argumentos";
 
 type Lead = { grupo: string; nome: string | null; whatsapp: string | null; segmento: string | null } | null;
 
@@ -53,7 +53,15 @@ export function KitConversa({ eu, lead }: { eu: string; lead: Lead }) {
         </div>
         {seg === "outros" && <div className="aviso atencao">Os dados são de concessionárias de motos. Para carros e outros segmentos, apresente como caso de motos e não projete os percentuais.</div>}
         <ol className="kit-pitch">
-          {PITCH[seg].map((e) => <li key={e.rotulo}><strong>{e.rotulo}</strong><p><ComMarcadores texto={preencher(e.texto)} /></p></li>)}
+          {PITCH[seg].map((e) => (
+            <li key={e.rotulo}><strong>{e.rotulo}</strong><p><ComMarcadores texto={preencher(e.texto)} /></p>
+              {e.rotulo === "Pergunta" && (
+                <div className="kit-ramos">
+                  {PITCH_RESPOSTAS.map((r) => <div key={r.rotulo}><strong>{r.rotulo}</strong><p>{r.texto}</p></div>)}
+                </div>
+              )}
+            </li>
+          ))}
         </ol>
         <div className="linha"><Copiar texto={PITCH[seg].map((e) => preencher(e.texto)).join("\n\n")} /></div>
         <div className="kit-apoio">

@@ -18,17 +18,24 @@ export type Etapa = { rotulo: string; texto: string };
 export const PITCH: Record<Segmento, Etapa[]> = {
   motos: [
     { rotulo: "Abertura", texto: "[Nome], aqui é [Eu], da Veilig. A gente trabalha com o pós-venda de concessionárias. Posso tomar 30 segundos seus?" },
-    { rotulo: "Pergunta", texto: "Hoje, de cada 4 clientes que fazem a 1ª revisão com vocês, quantos voltam para a 2ª?" },
+    { rotulo: "Pergunta", texto: "Nas concessionárias que chegam até a gente, é comum ver perda de 40% a 55% dos clientes já na 2ª revisão, e mais da metade do que sobra na 3ª. Isso também acontece aí na [Grupo]?" },
     { rotulo: "Dado", texto: "Acompanhamos 16 meses de uma rede de concessionárias de motos que usa a Veilig, mais de 20 mil ordens de serviço. Entre os clientes com plano de manutenção, 98% voltaram para a 2ª revisão; sem plano, 74%. E não para aí: depois de um ano de casa, o cliente com plano tinha passado 6,8 vezes pela oficina, contra 3,3 de quem não tem plano." },
     { rotulo: "Convite", texto: "Posso te mostrar em 20 minutos como isso funcionaria na [Grupo]? Tenho [dia] às [hora] ou [dia] às [hora]. Qual fica melhor?" },
   ],
   outros: [
     { rotulo: "Abertura", texto: "[Nome], aqui é [Eu], da Veilig. A gente trabalha com o pós-venda de concessionárias. Posso tomar 30 segundos seus?" },
-    { rotulo: "Pergunta", texto: "Hoje, de cada 4 clientes que fazem a 1ª revisão com vocês, quantos voltam para a 2ª? E depois que acaba a garantia?" },
+    { rotulo: "Pergunta", texto: "Nas concessionárias que chegam até a gente, é comum ver perda de 40% a 55% dos clientes já na 2ª revisão, e mais da metade do que sobra na 3ª. Isso também acontece aí na [Grupo]?" },
     { rotulo: "Dado", texto: "O caso em que temos mais dados é o de uma rede de concessionárias de motos que usa a Veilig: em 16 meses, quase todos os clientes com plano de manutenção voltaram para a 2ª revisão e, depois de um ano de casa, tinham passado o dobro de vezes pela oficina. Em carros a lógica do pós-venda é a mesma: o cliente some depois das primeiras revisões. A ideia é medir a curva de vocês e ver o tamanho dessa oportunidade." },
     { rotulo: "Convite", texto: "Posso te mostrar em 20 minutos como isso funcionaria na [Grupo]? Tenho [dia] às [hora] ou [dia] às [hora]. Qual fica melhor?" },
   ],
 };
+
+/** Depois da pergunta: o que dizer conforme a resposta, antes de entrar no dado. */
+export const PITCH_RESPOSTAS: Etapa[] = [
+  { rotulo: "Se disser que sim", texto: "É o padrão que a gente encontra, e é justamente o ponto que o plano de manutenção resolve. Deixa eu te contar o que aconteceu em um cliente nosso." },
+  { rotulo: "Se não souber o número", texto: "É o mais comum: pouca concessionária mede isso por revisão. Na conversa de 20 minutos a gente estima juntos com os números de vocês. Só para te dar uma referência do que muda com o plano:" },
+  { rotulo: "Se disser que perde menos", texto: "Ótimo, então vocês já estão acima do que a gente costuma ver. O plano ajuda a manter esse cliente nas revisões seguintes, que é onde a perda continua. Olha o que vimos em um cliente nosso:" },
+];
 
 export const PITCH_APOIO: Etapa[] = [
   { rotulo: "Se perguntarem o que é a Veilig", texto: "É uma plataforma para a concessionária vender planos de manutenção com mensalidade: o cliente paga todo mês, a concessionária recebe todo mês e o cliente volta para a oficina. A cobrança e o repasse para a conta da loja são automáticos." },
@@ -117,7 +124,7 @@ export const PODE = [
 export const EVITE = [
   "\"O plano dobra o retorno\": parte da diferença vem do perfil de quem contrata o plano.",
   "\"100%\" no dado da 2ª revisão: são 44 de 45.",
-  "\"O mercado perde 50%\": a perda de 40–55% é o que vemos nas concessionárias antes dos planos, sem fonte pública.",
+  "\"O mercado perde 50%\": diga \"nas concessionárias que chegam até a gente\". É o que vemos antes dos planos, não um dado de mercado.",
   "Atribuir os +65% de OS só ao plano: é efeito da operação inteira.",
   "Valores em R$ tirados do estudo: ele não tem o faturamento das OS.",
   "Qualquer detalhe que identifique o cliente: nome, cidade, marca ou número de lojas com a região.",
