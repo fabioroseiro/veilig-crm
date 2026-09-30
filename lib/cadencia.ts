@@ -162,6 +162,41 @@ const dataBR = (iso: string) => iso.split("-").reverse().join("/");
  * 2) tentados todos, o contato original recebe um segundo ciclo (se ainda não recebeu);
  * 3) sem mais ninguém, o lead é arquivado.
  */
+type ContatoRodizio = { id: string; nome: string | null; email: string | null; email_status: string; tentado: boolean; ciclos: number };
+
+/** Contatos do grupo com o histórico da Frio, e o próximo a tentar (e-mail válido, nunca tentado, outra pessoa). */
+async function rodizio(grupoId: string, atualId: string | null) {
+  const contatos = await q<ContatoRodizio>(
+    `SELECT ct.id, ct.nome, ct.email, ct.email_status,
+            EXISTS (SELECT 1 FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('fila','enviado','simulado')) AS tentado,
+            (SELECT count(*)::int FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('enviado','simulado')) AS ciclos
+       FROM contato ct WHERE ct.grupo_id = $1 ORDER BY ct.criado_em, ct.id`, [grupoId]);
+  const tentadas = new Set(contatos.filter((x) => x.tentado || x.id === atualId).map((x) => pessoa(x.nome)).filter(Boolean));
+  const proximo = contatos.find((x) =>
+    x.id !== atualId && !x.tentado && x.email_status === "ok" && x.email && !tentadas.has(pessoa(x.nome))) ?? null;
+  return { contatos, proximo };
+}
+
+/**
+ * E-mail do contato principal voltou durante a cadência Frio: passa na hora para o próximo contato
+ * com e-mail válido e recomeça do toque 1 (sem pausa, porque o anterior nunca recebeu nada).
+ * Sem outro contato, a cadência segue só por WhatsApp e ligação.
+ */
+export async function aposDevolucao(grupoId: string, contatoId: string | null, para: string) {
+  const padrao = `E-mail voltou (endereço inválido): ${para}. A cadência segue só por WhatsApp e ligação.`;
+  if (!contatoId) return atividade(grupoId, "sistema", padrao);
+  const k = await q1<{ id: string }>(
+    `SELECT k.id FROM cadencia k JOIN contato c ON c.grupo_id = k.grupo_id AND c.id = $2 AND c.principal
+      WHERE k.grupo_id = $1 AND k.tipo = 'frio' AND k.status = 'ativa'`, [grupoId, contatoId]);
+  if (!k) return atividade(grupoId, "sistema", padrao);
+  const { proximo } = await rodizio(grupoId, contatoId);
+  if (!proximo) return atividade(grupoId, "sistema", `${padrao} Não há outro contato com e-mail válido no grupo.`);
+  await q("UPDATE contato SET principal = (id = $2) WHERE grupo_id=$1", [grupoId, proximo.id]);
+  await q("UPDATE envio SET status='cancelado', erro='Contato trocado: e-mail anterior voltou' WHERE cadencia_id=$1 AND status='fila'", [k.id]);
+  await q("UPDATE cadencia SET passo=0, proximo_em=$2, motivo=NULL, atualizado_em=now() WHERE id=$1", [k.id, hojeISO()]);
+  await atividade(grupoId, "sistema", `E-mail voltou (endereço inválido): ${para}. A cadência Frio recomeça com ${proximo.nome || proximo.email}, do toque 1.`);
+}
+
 async function fimDoCicloFrio(c: Cad, hoje: string) {
   const retomar = somaDias(hoje, PAUSA_DIAS[c.porte]);
   const pausar = async (contatoId: string) => {
@@ -169,15 +204,7 @@ async function fimDoCicloFrio(c: Cad, hoje: string) {
     await q("UPDATE cadencia SET status='pausa', passo=passo+1, proximo_em=NULL, retomar_em=$2, atualizado_em=now() WHERE id=$1", [c.id, retomar]);
   };
 
-  const contatos = await q<{ id: string; nome: string | null; email: string | null; email_status: string; tentado: boolean; ciclos: number }>(
-    `SELECT ct.id, ct.nome, ct.email, ct.email_status,
-            EXISTS (SELECT 1 FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('fila','enviado','simulado')) AS tentado,
-            (SELECT count(*)::int FROM envio e WHERE e.contato_id = ct.id AND e.chave IN ('frio_1','frio_1_ciclo2') AND e.status IN ('enviado','simulado')) AS ciclos
-       FROM contato ct WHERE ct.grupo_id = $1 ORDER BY ct.criado_em, ct.id`, [c.grupo_id]);
-  const tentadas = new Set(contatos.filter((x) => x.tentado || x.id === c.contato_id).map((x) => pessoa(x.nome)).filter(Boolean));
-
-  const proximo = contatos.find((x) =>
-    x.id !== c.contato_id && !x.tentado && x.email_status === "ok" && x.email && !tentadas.has(pessoa(x.nome)));
+  const { contatos, proximo } = await rodizio(c.grupo_id, c.contato_id);
   if (proximo) {
     await pausar(proximo.id);
     await atividade(c.grupo_id, "sistema",
@@ -346,8 +373,11 @@ export async function lerRespostas() {
           `SELECT id, grupo_id, contato_id, para FROM envio WHERE status='enviado' AND lower(para) = ANY($1) AND enviado_em > now() - interval '15 days'`, [enderecos]);
         for (const e of env) {
           await q("UPDATE envio SET status='devolvido' WHERE id=$1", [e.id]);
+          // Vários e-mails para o mesmo endereço: trata o contato uma vez só.
+          const antes = e.contato_id ? await q1<{ email_status: string }>("SELECT email_status FROM contato WHERE id=$1", [e.contato_id]) : null;
+          if (antes?.email_status === "devolvido") continue;
           if (e.contato_id) await q("UPDATE contato SET email_status='devolvido' WHERE id=$1", [e.contato_id]);
-          await atividade(e.grupo_id, "sistema", `E-mail voltou (endereço inválido): ${e.para}. A cadência segue só por WhatsApp e ligação.`);
+          await aposDevolucao(e.grupo_id, e.contato_id, e.para);
           devolvidos++;
         }
         continue;
