@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { q, q1 } from "@/lib/db";
 import { lerConfig } from "@/lib/config";
 import * as A from "@/lib/acoes";
-import { ETAPAS, PACOTES, SEGMENTOS, TEMPERATURAS, TIPOS_TAREFA, brl, dataBR, diasDesde, hojeISO, linkWhatsApp, ponderado, porte, potencial, preencher } from "@/lib/regras";
+import { COMO_CONHECEU, ETAPAS, PACOTES, SEGMENTOS, TEMPERATURAS, TIPOS_TAREFA, brl, dataBR, diasDesde, hojeISO, linkWhatsApp, ponderado, porte, potencial, preencher } from "@/lib/regras";
 import { FormAcao, Enviar } from "@/components/FormAcao";
 import { Seletor, BotaoAcao } from "@/components/Seletor";
 import { iniciarUm, pararUm } from "@/lib/acoes-cadencia";
@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
 type Grupo = { id: string; nome: string; tipo: string; origem: string | null; origem_interna: string | null; segmento: string | null;
   marcas: string | null; num_lojas: number; entregas_mes: number | null; etapa: number; situacao: string; pausado_ate: string | null;
   perdido_motivo: string | null; temperatura: string; estrategico: boolean; responsavel_id: string | null; pacote: string;
-  ultimo_sinal: string | null; diagnostico: Record<string, string | null>; observacoes: string | null; criado_em: string };
+  ultimo_sinal: string | null; diagnostico: Record<string, string | null>; observacoes: string | null; criado_em: string; como_conheceu: string | null };
 type Contato = { id: string; nome: string | null; cargo: string | null; email: string | null; email_status: string; email_sugestao: string | null;
   whatsapp: string | null; telefone: string | null; principal: boolean };
 
@@ -304,6 +304,9 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                   <select name="pacote" defaultValue={g.pacote}>{Object.entries(PACOTES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
                 </label>
                 <label className="campo"><span>Marcas</span><input name="marcas" defaultValue={g.marcas ?? ""} /></label>
+                <label className="campo"><span>Como conheceu a Veilig</span>
+                  <select name="como_conheceu" defaultValue={g.como_conheceu ?? ""}><option value="">—</option>{COMO_CONHECEU.map((c) => <option key={c}>{c}</option>)}</select>
+                </label>
               </div>
               <h2 style={{ marginTop: 10 }}>Diagnóstico</h2>
               <div className="grade g2">

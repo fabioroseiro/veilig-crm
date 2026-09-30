@@ -79,3 +79,6 @@ export function preencher(modelo: string, v: { nome?: string | null; grupo?: str
   const cap = primeiro ? primeiro[0].toUpperCase() + primeiro.slice(1).toLowerCase() : "";
   return modelo.replace(/\[Nome\]/g, cap).replace(/\[Grupo\]/g, v.grupo || "").replace(/\[Origem\]/g, v.origem || "");
 }
+
+/** Como o lead conheceu a Veilig — mesmas opções do site. */
+export const COMO_CONHECEU = ["Google ou outro buscador", "ChatGPT, Gemini ou outra IA", "LinkedIn", "Instagram", "Indicação", "Evento ou feira", "Outro"];

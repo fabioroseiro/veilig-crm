@@ -2,7 +2,7 @@ import "server-only";
 import { q, q1 } from "./db";
 import { normalizarCelular, analisarEmail } from "./contatos";
 import { parar } from "./cadencia";
-import { hojeISO, SEGMENTOS } from "./regras";
+import { COMO_CONHECEU, hojeISO, SEGMENTOS } from "./regras";
 
 /** O que o site envia a cada simulação ou contato. */
 export type LeadSite = {
@@ -18,6 +18,7 @@ export type LeadSite = {
   linhas?: [string, string][]; // números da simulação, já formatados, na ordem do e-mail
   destaques?: { rua?: string; mensal?: string } | null;
   origem?: { referrer?: string; utm?: string; landing?: string } | null;
+  como_conheceu?: string | null;
 };
 
 const txt = (v: unknown, max = 200) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -48,6 +49,7 @@ export function lerLeadSite(b: Record<string, unknown> | null): LeadSite | null 
       : [],
     destaques: b.destaques && typeof b.destaques === "object"
       ? { rua: txt((b.destaques as Record<string, unknown>).rua, 40), mensal: txt((b.destaques as Record<string, unknown>).mensal, 40) } : null,
+    como_conheceu: COMO_CONHECEU.includes(txt(b.como_conheceu, 60)) ? txt(b.como_conheceu, 60) : null,
     origem: b.origem && typeof b.origem === "object"
       ? { referrer: txt((b.origem as Record<string, unknown>).referrer, 300), utm: txt((b.origem as Record<string, unknown>).utm, 200), landing: txt((b.origem as Record<string, unknown>).landing, 200) } : null,
   };
@@ -90,6 +92,7 @@ function detalhe(l: LeadSite) {
   if (l.linhas?.length) partes.push(...l.linhas.map(([k, v]) => `${k}: ${v}`));
   if (l.mensagem) partes.push(`Mensagem: ${l.mensagem}`);
   partes.push(`Contato: ${l.nome} · ${l.whatsapp || "sem WhatsApp"} · ${l.email}`);
+  if (l.como_conheceu) partes.push(`Como conheceu a Veilig: ${l.como_conheceu}`);
   const o = l.origem;
   if (o?.utm) partes.push(`Campanha: ${o.utm}`);
   partes.push(`Veio de: ${o?.referrer || "acesso direto"}`);
@@ -127,9 +130,9 @@ export async function receberLeadSite(l: LeadSite) {
   if (!grupoId) {
     // 2a) Grupo novo.
     const g = await q1<{ id: string }>(
-      `INSERT INTO grupo (nome, origem_interna, segmento, marcas, num_lojas, temperatura, responsavel_id, ultimo_sinal)
-       VALUES ($1, $2, $3, $4, $5, 'morno', $6, now()) RETURNING id`,
-      [l.empresa, l.tipo === "simulacao" ? "Site (simulador)" : "Site (contato)", l.segmento, l.marca, l.lojas ?? 1, sdr]);
+      `INSERT INTO grupo (nome, origem_interna, segmento, marcas, num_lojas, temperatura, responsavel_id, ultimo_sinal, como_conheceu)
+       VALUES ($1, $2, $3, $4, $5, 'morno', $6, now(), $7) RETURNING id`,
+      [l.empresa, l.tipo === "simulacao" ? "Site (simulador)" : "Site (contato)", l.segmento, l.marca, l.lojas ?? 1, sdr, l.como_conheceu ?? null]);
     grupoId = g!.id;
     novo = true;
     await q("INSERT INTO atividade (grupo_id, tipo, resumo) VALUES ($1, 'sistema', $2)", [grupoId, `Lead criado pelo site (${l.tipo === "simulacao" ? "simulador" : "formulário de contato"})`]);
@@ -146,8 +149,9 @@ export async function receberLeadSite(l: LeadSite) {
       await q("INSERT INTO atividade (grupo_id, tipo, resumo) VALUES ($1, 'temperatura', $2)", [grupoId, `Temperatura ${g.temperatura === "frio" ? "Frio" : "Oscilante"} → Morno (veio pelo site)`]);
     }
     await q(`UPDATE grupo SET ultimo_sinal=now(), atualizado_em=now(),
-               responsavel_id = COALESCE(responsavel_id, $2), segmento = COALESCE(segmento, $3), marcas = COALESCE(marcas, $4)
-             WHERE id=$1`, [grupoId, sdr, l.segmento, l.marca]);
+               responsavel_id = COALESCE(responsavel_id, $2), segmento = COALESCE(segmento, $3), marcas = COALESCE(marcas, $4),
+               como_conheceu = COALESCE(como_conheceu, $5)
+             WHERE id=$1`, [grupoId, sdr, l.segmento, l.marca, l.como_conheceu ?? null]);
     await parar(grupoId, "o lead entrou em contato pelo site");
   }
 

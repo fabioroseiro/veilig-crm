@@ -116,10 +116,11 @@ export async function salvarGrupo(grupoId: string, _: unknown, f: FormData) {
   const diag: Record<string, string | null> = {};
   for (const c of CAMPOS_DIAG) diag[c] = s(f, `diag_${c}`);
   await q(`UPDATE grupo SET nome=$2, tipo=COALESCE($3,'Concessionária'), origem=$4, origem_interna=$5, segmento=$6, marcas=$7,
-           num_lojas=GREATEST(COALESCE($8,1),1), entregas_mes=$9, pacote=COALESCE($10,'essencial'), observacoes=$11, diagnostico=$12, atualizado_em=now()
+           num_lojas=GREATEST(COALESCE($8,1),1), entregas_mes=$9, pacote=COALESCE($10,'essencial'), observacoes=$11, diagnostico=$12,
+           como_conheceu=$13, atualizado_em=now()
            WHERE id=$1`,
     [grupoId, nome, s(f, "tipo"), s(f, "origem"), s(f, "origem_interna"), s(f, "segmento"), s(f, "marcas"),
-     n(f, "num_lojas"), n(f, "entregas_mes"), s(f, "pacote"), s(f, "observacoes"), JSON.stringify(diag)]);
+     n(f, "num_lojas"), n(f, "entregas_mes"), s(f, "pacote"), s(f, "observacoes"), JSON.stringify(diag), s(f, "como_conheceu")]);
   atualizarTelas(grupoId);
   return { ok: "Dados salvos." };
 }
