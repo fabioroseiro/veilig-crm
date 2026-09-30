@@ -19,13 +19,13 @@ export const PITCH: Record<Segmento, Etapa[]> = {
   motos: [
     { rotulo: "Abertura", texto: "[Nome], aqui é [Eu], da Veilig. A gente trabalha com o pós-venda de concessionárias. Posso tomar 30 segundos seus?" },
     { rotulo: "Pergunta", texto: "Hoje, de cada 4 clientes que fazem a 1ª revisão com vocês, quantos voltam para a 2ª?" },
-    { rotulo: "Dado", texto: "Acompanhamos 16 meses de uma rede de concessionárias de motos que usa a Veilig, mais de 20 mil ordens de serviço. Entre os clientes com plano de manutenção, 98% voltaram para a 2ª revisão; sem plano, 74%. E quem tem plano passou o dobro de vezes pela oficina." },
+    { rotulo: "Dado", texto: "Acompanhamos 16 meses de uma rede de concessionárias de motos que usa a Veilig, mais de 20 mil ordens de serviço. Entre os clientes com plano de manutenção, 98% voltaram para a 2ª revisão; sem plano, 74%. E não para aí: depois de um ano de casa, o cliente com plano tinha passado 6,8 vezes pela oficina, contra 3,3 de quem não tem plano." },
     { rotulo: "Convite", texto: "Posso te mostrar em 20 minutos como isso funcionaria na [Grupo]? Tenho [dia] às [hora] ou [dia] às [hora]. Qual fica melhor?" },
   ],
   outros: [
     { rotulo: "Abertura", texto: "[Nome], aqui é [Eu], da Veilig. A gente trabalha com o pós-venda de concessionárias. Posso tomar 30 segundos seus?" },
     { rotulo: "Pergunta", texto: "Hoje, de cada 4 clientes que fazem a 1ª revisão com vocês, quantos voltam para a 2ª? E depois que acaba a garantia?" },
-    { rotulo: "Dado", texto: "O caso em que temos mais dados é o de uma rede de concessionárias de motos que usa a Veilig: em 16 meses, os clientes com plano de manutenção passaram o dobro de vezes pela oficina, e quase todos voltaram para a 2ª revisão. Em carros a lógica do pós-venda é a mesma: o cliente some depois das primeiras revisões. A ideia é medir a curva de vocês e ver o tamanho dessa oportunidade." },
+    { rotulo: "Dado", texto: "O caso em que temos mais dados é o de uma rede de concessionárias de motos que usa a Veilig: em 16 meses, quase todos os clientes com plano de manutenção voltaram para a 2ª revisão e, depois de um ano de casa, tinham passado o dobro de vezes pela oficina. Em carros a lógica do pós-venda é a mesma: o cliente some depois das primeiras revisões. A ideia é medir a curva de vocês e ver o tamanho dessa oportunidade." },
     { rotulo: "Convite", texto: "Posso te mostrar em 20 minutos como isso funcionaria na [Grupo]? Tenho [dia] às [hora] ou [dia] às [hora]. Qual fica melhor?" },
   ],
 };
@@ -49,9 +49,10 @@ export type Indicador = { n: number; numero: string; titulo: string; comparacao?
 
 export const INDICADORES: Indicador[] = [
   { n: 1, numero: "98%", titulo: "dos clientes com plano voltaram para a 2ª revisão", comparacao: "Sem plano: 74%", base: "44 de 45 motos com plano", frase: "O momento em que a concessionária mais perde cliente é a 2ª revisão. Com o plano, praticamente ninguém deixou de voltar." },
+  { n: 9, numero: "6,8 × 3,3", titulo: "passagens na oficina por moto depois de 12 meses de casa", comparacao: "Com plano × sem plano, mesmo tempo de casa (12 a 17 meses)", base: "46 motos com plano e 1.790 sem plano", frase: "A fidelização não para na 2ª revisão. Depois de um ano, o cliente com plano continua voltando: passou mais que o dobro de vezes pela oficina." },
   { n: 2, numero: "5,0 × 2,4", titulo: "passagens na oficina por moto, com e sem plano", comparacao: "Diferença de 2,1x a 2,3x a partir do 6º mês, no mesmo tempo de casa", base: "4.767 motos acompanhadas", frase: "Cada cliente com plano rende o dobro de visitas à oficina. É receita de pós-venda que se repete todo mês." },
   { n: 3, numero: "2,2x", titulo: "mais serviços avulsos por cliente com plano", comparacao: "1,8 contra 0,8 por moto", base: "Peças, óleo e acessórios fora do plano", frase: "O plano não troca a receita da oficina por mensalidade. Quem tem plano compra mais que o dobro de serviços avulsos." },
-  { n: 4, numero: "67%", titulo: "dos clientes com plano fizeram 3 passagens ou mais", comparacao: "Sem plano: 36%", base: "16 meses de operação", frase: "O plano transforma o comprador em cliente frequente da oficina." },
+  { n: 4, numero: "67%", titulo: "dos clientes com plano fizeram 3 passagens ou mais", comparacao: "Sem plano: 36%", base: "16 meses de operação", frase: "O plano transforma o comprador em cliente frequente: 2 em cada 3 clientes com plano voltaram 3 vezes ou mais, o dobro de quem não tem plano." },
   { n: 5, numero: "75%", titulo: "voltaram da 1ª para a 2ª revisão (toda a base)", base: "Coorte de 1.433 motos", frase: "Com agendamento, lembretes e acompanhamento, 3 em cada 4 clientes voltaram para a 2ª revisão." },
   { n: 6, numero: "81%", titulo: "voltaram para algum serviço depois da 1ª revisão", base: "Toda a base atendida com a plataforma", frase: "A primeira revisão é a porta de entrada. Oito em cada dez clientes voltaram." },
   { n: 7, numero: "74%", titulo: "dos atendimentos vieram de clientes recorrentes", comparacao: "6.442 passagens recorrentes em 12 meses", base: "Setembro de 2026", frase: "Três em cada quatro atendimentos da oficina vêm de clientes que já são da casa." },
@@ -64,13 +65,15 @@ export const WHATSAPP: Mensagem[] = [
   { id: "primeiro-pergunta", titulo: "Primeiro contato: a pergunta", quando: "Lead que ainda não conversou com a gente",
     texto: "Olá, [Nome]! Aqui é [Eu], da Veilig. Uma pergunta direta: de cada 4 clientes que fazem a 1ª revisão na [Grupo], quantos voltam para a 2ª?\n\nEm uma rede de concessionárias de motos que usa a Veilig, foram 3 em cada 4, acompanhando mais de 1.400 motos. Se o número de vocês for menor, a diferença é receita de oficina que hoje fica na rua.\n\nPosso te mostrar em 20 minutos como medimos isso?" },
   { id: "primeiro-98", titulo: "Primeiro contato: o dado do plano", quando: "Lead que já conhece o conceito de plano de manutenção",
-    texto: "Olá, [Nome]! Aqui é [Eu], da Veilig. Em uma rede de concessionárias de motos que usa a Veilig, 98% dos clientes com plano de manutenção voltaram para a 2ª revisão. Sem plano, foram 74%. A 2ª revisão é justamente onde a oficina mais perde cliente.\n\nHoje vocês sabem quantos clientes da [Grupo] voltam para a 2ª revisão? Posso te mostrar como medimos isso em 20 minutos." },
+    texto: "Olá, [Nome]! Aqui é [Eu], da Veilig. Em uma rede de concessionárias de motos que usa a Veilig, 98% dos clientes com plano de manutenção voltaram para a 2ª revisão. Sem plano, foram 74%. E eles continuam voltando: depois de um ano, o cliente com plano tinha passado mais que o dobro de vezes pela oficina.\n\nHoje vocês sabem quantos clientes da [Grupo] voltam para a 2ª revisão? Posso te mostrar como medimos isso em 20 minutos." },
   { id: "pos-simulacao", titulo: "Depois da simulação no site", quando: "Lead que veio pelo simulador",
     texto: "Olá, [Nome]! Aqui é [Eu], da Veilig. Recebi a simulação que você fez no nosso site. Um dado que ajuda a ler aqueles números: em uma rede de concessionárias de motos que usa a Veilig, o cliente com plano passou o dobro de vezes pela oficina e comprou 2,2 vezes mais serviços avulsos.\n\nPosso te mostrar como chegamos na simulação e como ficariam os planos para a [Grupo]? Qual o melhor horário?" },
   { id: "retomada", titulo: "Retomada sem resposta", quando: "Lead que parou de responder",
     texto: "[Nome], um dado da nossa operação: em uma rede de concessionárias de motos, o cliente com plano de manutenção passou 5 vezes pela oficina em média. O cliente sem plano, 2,4. Mesmo tempo de casa, o dobro de visitas.\n\nVale uma conversa rápida para estimar esse efeito na [Grupo]?" },
   { id: "frequencia", titulo: "Cliente frequente", quando: "Reforço em cadência ou follow-up",
     texto: "[Nome], em 16 meses de operação de uma rede que usa a Veilig, 2 em cada 3 clientes com plano de manutenção passaram pela oficina 3 vezes ou mais. Sem plano, foi 1 em cada 3.\n\nQuer ver como estruturamos esse plano para a [Grupo], sem mudar a operação de vocês?" },
+  { id: "fidelizacao", titulo: "Fidelização além da 2ª revisão", quando: "Lead que pergunta se o cliente some depois",
+    texto: "[Nome], uma dúvida comum é se o cliente com plano volta só na 2ª revisão e depois some. Nos nossos dados, não: em uma rede de concessionárias de motos que usa a Veilig, 2 em cada 3 clientes com plano passaram pela oficina 3 vezes ou mais (sem plano, 1 em cada 3). Depois de um ano de casa, foram 6,8 passagens por cliente com plano, contra 3,3 sem plano.\n\nPosso te mostrar como isso funcionaria na [Grupo]?" },
   { id: "recorrentes", titulo: "Base recorrente", quando: "Conversa com dono ou financeiro",
     texto: "[Nome], quanto do movimento da oficina da [Grupo] hoje vem de clientes que voltam? Em uma rede que usa a Veilig, 74% dos atendimentos do último mês foram de clientes recorrentes.\n\nOficina com base recorrente tem receita previsível. Posso te mostrar como chegamos lá?" },
   { id: "resultado-65", titulo: "Resultado da operação", quando: "Lead que pede resultado concreto",
@@ -87,7 +90,7 @@ export const OBJECOES: Objecao[] = [
   { objecao: "\"O plano vai canibalizar a oficina.\"", dado: "2,2x mais serviços avulsos",
     resposta: "É uma dúvida comum, e nos dados acontece o contrário: o cliente com plano comprou 2,2 vezes mais serviços avulsos (peças, óleo, acessórios) do que o cliente sem plano. O plano traz o cliente para dentro da loja, e ele compra mais enquanto está lá." },
   { objecao: "\"O cliente não vai querer pagar mensalidade.\"", dado: "98% × 74% na 2ª revisão",
-    resposta: "Nem todo cliente vai querer, e nem precisa. Na base Veilig a adesão fica entre 6% e 10% das vendas, conforme o valor da mensalidade. E quem adere volta: 98% dos clientes com plano fizeram a 2ª revisão na loja. O plano é oferecido na entrega do veículo, quando o cliente já está decidindo pela concessionária." },
+    resposta: "Nem todo cliente vai querer, e nem precisa. Na base Veilig a adesão fica entre 6% e 10% das vendas, conforme o valor da mensalidade. E quem adere volta e continua voltando: 98% dos clientes com plano fizeram a 2ª revisão na loja e, depois de um ano, tinham passado mais que o dobro de vezes pela oficina. O plano é oferecido na entrega do veículo, quando o cliente já está decidindo pela concessionária." },
   { objecao: "\"Já vendemos pacote de revisões.\"",
     resposta: "Ótimo, então o cliente de vocês já entende a ideia. A diferença é que o pacote pago à vista antecipa a receita e acaba; o plano vira mensalidade, com cobrança automática, repasse na conta da loja e o acompanhamento de quem está voltando ou não. Uma pergunta: hoje vocês sabem quantos clientes do pacote deixaram de voltar?" },
   { objecao: "\"Não temos tempo ou time para implantar.\"",
@@ -104,6 +107,7 @@ export const OBJECOES: Objecao[] = [
 
 export const PODE = [
   "\"Clientes com plano voltam o dobro à oficina.\"",
+  "\"A fidelização continua depois da 2ª revisão: 6,8 passagens contra 3,3 depois de um ano.\"",
   "\"Em uma rede de concessionárias de motos, cliente Veilig.\"",
   "\"16 meses de dados, mais de 20 mil ordens de serviço.\"",
   "Perguntar o número do lead antes de mostrar o nosso.",
@@ -118,4 +122,5 @@ export const EVITE = [
   "Valores em R$ tirados do estudo: ele não tem o faturamento das OS.",
   "Qualquer detalhe que identifique o cliente: nome, cidade, marca ou número de lojas com a região.",
   "Projetar os percentuais de motos para carros.",
+  "Usar a curva revisão a revisão da base toda (64%, 60%…) como se fosse de clientes com plano: ela não separa quem tem plano.",
 ];

@@ -68,7 +68,7 @@ export function KitConversa({ eu, lead }: { eu: string; lead: Lead }) {
       </section>
 
       <section id="dados" className="caixa">
-        <h2>Os 8 dados</h2>
+        <h2>Os dados</h2>
         <div className="kit-cartoes">
           {INDICADORES.map((i) => (
             <div key={i.n} className="kit-cartao">
