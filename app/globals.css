@@ -175,3 +175,36 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
   .prop-comparativo.c3 td:first-child{white-space:normal}
   .prop-comparativo.c3 td+td::before{content:attr(data-rotulo) ": ";font-weight:600;color:var(--muted)}
 }
+
+/* Argumentos (kit de conversa) */
+.kit{display:grid;gap:16px;max-width:1100px}
+.kit-nav{display:flex;flex-wrap:wrap;gap:8px;position:sticky;top:0;background:var(--soft);padding:8px 0;z-index:2}
+.kit-nav a{font-size:14px;font-weight:600;text-decoration:none;color:var(--text);background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px}
+.kit-nav a:hover{border-color:var(--acc-2)}
+.kit-fonte{font-size:13px;margin:-6px 0 0}
+.kit section{scroll-margin-top:56px}
+.kit-pitch{padding-left:20px;margin:14px 0}
+.kit-pitch li{margin-bottom:10px}
+.kit-pitch p{margin:2px 0 0;font-size:16px}
+.kit-apoio{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:14px}
+.kit-apoio>div{background:var(--soft);border-radius:8px;padding:10px 12px;font-size:14px}
+.kit-apoio p{margin:4px 0 0}
+.kit-lista{margin:0;padding-left:20px}.kit-lista li{margin-bottom:5px}
+.kit-cartoes{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.kit-cartao{border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:4px}
+.kit-cartao p{font-size:14px;margin:6px 0;flex:1}
+.kit-num{font-size:28px;font-weight:800;color:var(--ink);font-variant-numeric:tabular-nums}
+.kit-tit{font-weight:600;font-size:14px}
+.kit-comp{font-size:13px;color:var(--acc-2);font-weight:600}
+.kit-msgs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.kit-msg{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:8px}
+.kit-texto{background:#e7f6ea;border-radius:8px;padding:10px;font-size:14px;white-space:pre-wrap;flex:1}
+.kit mark{background:#fff1c2;color:inherit;border-radius:3px;padding:0 2px}
+.kit-obj{border-bottom:1px solid var(--line);padding:10px 0}
+.kit-obj summary{cursor:pointer}
+.kit-obj p{margin:8px 0}
+.kit-pode{color:var(--ok);font-size:15px}.kit-evite{color:var(--danger);font-size:15px}
+.abas-mini{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden}
+.abas-mini button{font:inherit;font-size:13px;font-weight:600;border:0;background:#fff;color:var(--muted);padding:6px 12px;cursor:pointer}
+.abas-mini button.ativa{background:var(--ink);color:#fff}
+@media (max-width:900px){.kit-apoio{grid-template-columns:1fr}}

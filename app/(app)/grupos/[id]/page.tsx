@@ -95,6 +95,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                 opcoes={[...(g.responsavel_id ? [] : [{ v: "", nome: "—" }]), ...usuarios.map((u) => ({ v: u.id, nome: u.nome }))]} />
             </div>
             <div className="linha">
+              <Link className="btn btn-mini btn-ink" href={`/argumentos?grupo=${id}`}>Argumentos para este lead</Link>
               <BotaoAcao acao={A.alternarEstrategico.bind(null, id)}>{g.estrategico ? "Tirar de Estratégico" : "Marcar como Estratégico"}</BotaoAcao>
               {g.situacao !== "ativo" && <BotaoAcao className="btn btn-mini btn-ink" acao={A.reativar.bind(null, id)}>Reativar lead</BotaoAcao>}
             </div>
