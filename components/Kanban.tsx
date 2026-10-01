@@ -6,6 +6,7 @@ export type Cartao = {
   id: string; nome: string; etapa: number; temperatura: string; porte: string; numLojas: number;
   responsavel: string | null; dias: number | null; potencial: number | null; ponderado: number | null;
   estrategico: boolean; origem: string | null; segmento: string | null; tarefas: number;
+  qualificacao: number; qualificado: boolean;
 };
 type Temps = Record<string, { nome: string; cor: string }>;
 
@@ -78,6 +79,7 @@ export function Kanban({ cartoes, etapas, temps, responsaveis, mover }: {
                       <span>{c.numLojas} loja{c.numLojas > 1 ? "s" : ""}</span>
                       {c.potencial != null && <span>· {brl(c.potencial)}/mês</span>}
                       {c.responsavel && <span>· {c.responsavel.split(" ")[0]}</span>}
+                      <span className={`q-nota${c.qualificado ? " ok" : ""}`} title="Critérios de qualificação preenchidos">Q {c.qualificacao}/6</span>
                     </div>
                     <div className="info" style={{ marginTop: 4 }}>
                       {c.dias != null && c.dias > 7 ? <span className="alerta">{c.dias} dias sem sinal</span> : c.dias != null ? <span>sinal há {c.dias} d</span> : <span>sem resposta ainda</span>}

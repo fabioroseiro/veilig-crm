@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { CRITERIOS } from "@/lib/qualificacao";
 import { EVITE, FONTE, INDICADORES, OBJECOES, PERGUNTAS, PITCH, PITCH_APOIO, PITCH_RESPOSTAS, PODE, WHATSAPP, type Segmento } from "@/lib/argumentos";
 
 type Lead = { grupo: string; nome: string | null; whatsapp: string | null; segmento: string | null } | null;
@@ -25,7 +26,7 @@ function Copiar({ texto }: { texto: string }) {
 }
 
 const SECOES = [
-  ["pitch", "Pitch por telefone"], ["perguntas", "Perguntas"], ["dados", "Dados"], ["whatsapp", "WhatsApp"], ["objecoes", "Objeções"], ["regras", "Pode / evite"],
+  ["pitch", "Pitch por telefone"], ["perguntas", "Perguntas"], ["descoberta", "Qualificação"], ["dados", "Dados"], ["whatsapp", "WhatsApp"], ["objecoes", "Objeções"], ["regras", "Pode / evite"],
 ] as const;
 
 export function KitConversa({ eu, lead }: { eu: string; lead: Lead }) {
@@ -73,6 +74,14 @@ export function KitConversa({ eu, lead }: { eu: string; lead: Lead }) {
         <h2>Perguntas de diagnóstico</h2>
         <p className="muted" style={{ marginTop: -6 }}>Pergunte o número do lead antes de mostrar o nosso. Anote as respostas no diagnóstico da ficha.</p>
         <ul className="kit-lista">{PERGUNTAS.map((p) => <li key={p}>{p}</li>)}</ul>
+      </section>
+
+      <section id="descoberta" className="caixa">
+        <h2>Qualificação na conversa</h2>
+        <p className="muted" style={{ marginTop: -6 }}>Para descobrir sem perguntar direto. Os com * são pedidos antes de marcar a agenda; anote na ficha, em Qualificação.</p>
+        <ul className="kit-lista">
+          {CRITERIOS.map((c) => <li key={c.chave}><strong>{c.rotulo}{c.obrigatorio ? " *" : ""}:</strong> {c.descobrir}</li>)}
+        </ul>
       </section>
 
       <section id="dados" className="caixa">

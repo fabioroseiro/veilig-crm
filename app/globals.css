@@ -241,3 +241,12 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .j-pessoa.atual{background:var(--ink);color:#fff;border-color:var(--ink)}
 .j-pessoa.atual small{color:#cfe3e8}
 .j-pessoa.fora{opacity:.6}
+
+/* Qualificação */
+.criterio{border-left:3px solid var(--line);padding-left:10px;margin-bottom:8px}
+.criterio .campo{margin-bottom:4px}
+.criterio .descobrir{font-size:12px;color:var(--muted);margin-bottom:6px}
+.portao{display:grid;gap:8px;margin-top:-4px}
+.portao textarea{width:100%;font:inherit;font-size:14px;min-height:56px;border:1px solid var(--line);border-radius:8px;padding:8px}
+.q-nota{margin-left:auto;font-size:11px;font-weight:700;padding:1px 7px;border-radius:99px;background:#fdeceb;color:var(--danger)}
+.q-nota.ok{background:#dcf5e8;color:var(--ok)}

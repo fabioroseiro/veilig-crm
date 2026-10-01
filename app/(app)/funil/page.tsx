@@ -4,12 +4,13 @@ import { lerConfig } from "@/lib/config";
 import { mudarEtapa, reativar } from "@/lib/acoes";
 import { ETAPAS, TEMPERATURAS, dataBR, diasDesde, ponderado, porte, potencial } from "@/lib/regras";
 import { Kanban, type Cartao } from "@/components/Kanban";
+import { notaQualificacao, obrigatoriosFaltando } from "@/lib/qualificacao";
 
 export const dynamic = "force-dynamic";
 
 type G = { id: string; nome: string; etapa: number; temperatura: string; num_lojas: number; pacote: string; situacao: string;
   estrategico: boolean; origem: string | null; segmento: string | null; ultimo_sinal: string | null; responsavel: string | null;
-  pausado_ate: string | null; perdido_motivo: string | null; tarefas: string };
+  pausado_ate: string | null; perdido_motivo: string | null; tarefas: string; diagnostico: Record<string, string | null> };
 
 export default async function Funil({ searchParams }: { searchParams: Promise<{ ver?: string }> }) {
   const ver = (await searchParams).ver || "ativos";
@@ -17,7 +18,7 @@ export default async function Funil({ searchParams }: { searchParams: Promise<{ 
   const situacao = ver === "pausados" ? "pausado" : ver === "perdidos" ? "perdido" : "ativo";
   const grupos = await q<G>(
     `SELECT g.id, g.nome, g.etapa, g.temperatura, g.num_lojas, g.pacote, g.situacao, g.estrategico, g.origem, g.segmento,
-            g.ultimo_sinal, u.nome AS responsavel, to_char(g.pausado_ate,'YYYY-MM-DD') AS pausado_ate, g.perdido_motivo,
+            g.ultimo_sinal, g.diagnostico, u.nome AS responsavel, to_char(g.pausado_ate,'YYYY-MM-DD') AS pausado_ate, g.perdido_motivo,
             (SELECT count(*) FROM tarefa t WHERE t.grupo_id=g.id AND t.feita_em IS NULL) AS tarefas
        FROM grupo g LEFT JOIN usuario u ON u.id = g.responsavel_id
       WHERE g.situacao = $1 ORDER BY g.estrategico DESC, g.num_lojas DESC, g.nome`, [situacao]);
@@ -30,6 +31,7 @@ export default async function Funil({ searchParams }: { searchParams: Promise<{ 
       id: g.id, nome: g.nome, etapa: g.etapa, temperatura: g.temperatura, porte: porte(g.num_lojas), numLojas: g.num_lojas,
       responsavel: g.responsavel, dias: diasDesde(g.ultimo_sinal), potencial: pot, ponderado: ponderado(pot, g.etapa, g.situacao),
       estrategico: g.estrategico, origem: g.origem, segmento: g.segmento, tarefas: Number(g.tarefas),
+      qualificacao: notaQualificacao(g.diagnostico).feitos, qualificado: obrigatoriosFaltando(g.diagnostico).length === 0,
     };
   });
   const responsaveis = [...new Set(grupos.map((g) => g.responsavel).filter(Boolean))] as string[];

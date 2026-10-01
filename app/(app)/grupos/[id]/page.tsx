@@ -12,6 +12,8 @@ import { propostasDoGrupo } from "@/lib/proposta";
 import { STATUS_PROPOSTA, PACOTES_PROPOSTA } from "@/lib/proposta-tipos";
 import { criarProposta } from "@/lib/acoes-proposta";
 import { Jornada } from "@/components/Jornada";
+import { SeletorEtapa } from "@/components/SeletorEtapa";
+import { CRITERIOS, ETAPA_PORTAO, notaQualificacao, obrigatoriosFaltando } from "@/lib/qualificacao";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +54,7 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
   const hoje = hojeISO();
   const d = g.diagnostico || {};
   const dias = diasDesde(g.ultimo_sinal);
+  const nota = notaQualificacao(d);
 
   return (
     <>
@@ -90,8 +93,9 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
           <div className="caixa">
             <h2>Situação</h2>
             <div className="grade g3">
-              <Seletor rotulo="Etapa" valor={String(g.etapa)} acao={async (v) => { "use server"; await A.mudarEtapa(id, Number(v)); }}
-                opcoes={Object.entries(ETAPAS).map(([k, e]) => ({ v: k, nome: `${k}. ${e.nome}` }))} />
+              <SeletorEtapa valor={g.etapa} faltando={obrigatoriosFaltando(d)} portao={ETAPA_PORTAO}
+                acao={async (v, j) => { "use server"; await A.mudarEtapa(id, v, j); }}
+                opcoes={Object.entries(ETAPAS).map(([k, e]) => ({ v: Number(k), nome: `${k}. ${e.nome}` }))} />
               <Seletor rotulo="Temperatura" valor={g.temperatura} acao={async (v) => { "use server"; await A.mudarTemperatura(id, v); }}
                 opcoes={Object.entries(TEMPERATURAS).map(([k, t]) => ({ v: k, nome: t.nome }))} />
               <Seletor rotulo="Responsável" valor={g.responsavel_id ?? ""} acao={async (v) => { "use server"; await A.mudarResponsavel(id, v); }}
@@ -311,9 +315,23 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                   <select name="como_conheceu" defaultValue={g.como_conheceu ?? ""}><option value="">—</option>{COMO_CONHECEU.map((c) => <option key={c}>{c}</option>)}</select>
                 </label>
               </div>
-              <h2 style={{ marginTop: 10 }}>Diagnóstico</h2>
+              <h2 style={{ marginTop: 10 }}>Qualificação <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{nota.feitos} de {nota.total}</span></h2>
+              <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>Vá preenchendo durante a conversa. Os marcados com * são pedidos antes de Agenda marcada.</p>
+              {CRITERIOS.map((c) => (
+                <div key={c.chave} className="criterio">
+                  <label className="campo"><span>{c.rotulo}{c.obrigatorio ? " *" : ""}</span>
+                    {c.opcoes
+                      ? <select name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""}><option value="">—</option>{c.opcoes.map((o) => <option key={o}>{o}</option>)}</select>
+                      : <input name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""} placeholder="Nome e cargo" />}
+                  </label>
+                  <div className="descobrir">{c.descobrir}</div>
+                </div>
+              ))}
+              {d.encaixe === "Não atende" && g.situacao === "ativo" && (
+                <div className="aviso atencao">O produto não atende a dor deste lead. Considere marcar como perdido com esse motivo, em &quot;Situação&quot;.</div>
+              )}
+              <h2 style={{ marginTop: 10 }}>Números da operação</h2>
               <div className="grade g2">
-                <label className="campo"><span>Decisor final</span><input name="diag_decisor" defaultValue={d.decisor ?? ""} /></label>
                 <label className="campo"><span>Retenção na 2ª revisão (%)</span><input name="diag_retencao_2a" defaultValue={d.retencao_2a ?? ""} /></label>
                 <label className="campo"><span>Planos vendidos hoje / mês</span><input name="diag_planos_hoje" defaultValue={d.planos_hoje ?? ""} /></label>
                 <label className="campo"><span>Ticket médio de revisão (R$)</span><input name="diag_ticket_revisao" defaultValue={d.ticket_revisao ?? ""} /></label>

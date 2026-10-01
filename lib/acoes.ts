@@ -7,6 +7,7 @@ import { q, q1, tx } from "./db";
 import { exigirUsuario } from "./auth";
 import { lerConfig } from "./config";
 import { aplicarEtapa } from "./funil";
+import { ETAPA_PORTAO, obrigatoriosFaltando } from "./qualificacao";
 import { COOKIE } from "./sessao";
 import { ETAPAS, ETAPA_PASSA_CLOSER, ETAPA_VIRA_QUENTE, TEMPERATURAS, hojeISO, somaDias } from "./regras";
 import { analisarEmail, normalizarCelular } from "./contatos";
@@ -43,8 +44,17 @@ export async function trocarSenha(_: unknown, f: FormData) {
 // ---------------- Funil ----------------
 
 /** Muda a etapa aplicando as regras: Agenda+ vira Quente; Proposta passa para o closer. */
-export async function mudarEtapa(grupoId: string, etapa: number) {
+export async function mudarEtapa(grupoId: string, etapa: number, justificativa?: string) {
   const u = await exigirUsuario();
+  const g = await q1<{ etapa: number; diagnostico: Record<string, string | null> }>("SELECT etapa, diagnostico FROM grupo WHERE id=$1", [grupoId]);
+  if (!g) return;
+  // Portão de qualificação (aviso): passar para Agenda marcada sem os obrigatórios fica registrado.
+  const falta = obrigatoriosFaltando(g.diagnostico);
+  if (etapa >= ETAPA_PORTAO && g.etapa < ETAPA_PORTAO && falta.length) {
+    const j = (justificativa || "").trim();
+    await registrar(grupoId, "sistema", `Avançou para ${ETAPAS[etapa].nome} sem qualificação completa (falta: ${falta.join(", ")})`, u.id,
+      j ? `Justificativa: ${j}` : "Sem justificativa (movido pelo funil)");
+  }
   await aplicarEtapa(grupoId, etapa, u.id);
   atualizarTelas(grupoId);
 }
@@ -107,7 +117,7 @@ export async function mudarResponsavel(grupoId: string, usuarioId: string) {
 
 // ---------------- Cadastro ----------------
 
-const CAMPOS_DIAG = ["decisor", "retencao_2a", "planos_hoje", "ticket_revisao", "entregas_loja", "proximo_passo", "data_proximo_passo"];
+const CAMPOS_DIAG = ["dor", "encaixe", "papel", "decisor", "orcamento", "implantacao", "retencao_2a", "planos_hoje", "ticket_revisao", "entregas_loja", "proximo_passo", "data_proximo_passo"];
 
 export async function salvarGrupo(grupoId: string, _: unknown, f: FormData) {
   await exigirUsuario();
