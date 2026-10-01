@@ -126,6 +126,27 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
             )}
           </div>
 
+          <div className="caixa" id="qualificacao">
+            <FormAcao acao={A.salvarQualificacao.bind(null, id)}>
+              <h2>Qualificação <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{nota.feitos} de {nota.total}</span></h2>
+              <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>Vá preenchendo durante a conversa. Os marcados com * são pedidos antes de Agenda marcada.</p>
+              {CRITERIOS.map((c) => (
+                <div key={c.chave} className="criterio">
+                  <label className="campo"><span>{c.rotulo}{c.obrigatorio ? " *" : ""}</span>
+                    {c.opcoes
+                      ? <select name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""}><option value="">—</option>{c.opcoes.map((o) => <option key={o}>{o}</option>)}</select>
+                      : <input name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""} placeholder="Nome e cargo" />}
+                  </label>
+                  <div className="descobrir">{c.descobrir}</div>
+                </div>
+              ))}
+              {d.encaixe === "Não atende" && g.situacao === "ativo" && (
+                <div className="aviso atencao">O produto não atende a dor deste lead. Considere marcar como perdido com esse motivo, em &quot;Situação&quot;.</div>
+              )}
+              <Enviar>Salvar qualificação</Enviar>
+            </FormAcao>
+          </div>
+
           <div className="caixa">
             <h2>Cadência{cad && (cad.status === "ativa" || cad.status === "pausa") ? ` ${NOME_CADENCIA[cad.tipo]}` : ""}</h2>
             {(() => {
@@ -315,21 +336,6 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
                   <select name="como_conheceu" defaultValue={g.como_conheceu ?? ""}><option value="">—</option>{COMO_CONHECEU.map((c) => <option key={c}>{c}</option>)}</select>
                 </label>
               </div>
-              <h2 style={{ marginTop: 10 }}>Qualificação <span className="muted" style={{ fontSize: 13, fontWeight: 400 }}>{nota.feitos} de {nota.total}</span></h2>
-              <p className="muted" style={{ fontSize: 12, marginTop: -6 }}>Vá preenchendo durante a conversa. Os marcados com * são pedidos antes de Agenda marcada.</p>
-              {CRITERIOS.map((c) => (
-                <div key={c.chave} className="criterio">
-                  <label className="campo"><span>{c.rotulo}{c.obrigatorio ? " *" : ""}</span>
-                    {c.opcoes
-                      ? <select name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""}><option value="">—</option>{c.opcoes.map((o) => <option key={o}>{o}</option>)}</select>
-                      : <input name={`diag_${c.chave}`} defaultValue={d[c.chave] ?? ""} placeholder="Nome e cargo" />}
-                  </label>
-                  <div className="descobrir">{c.descobrir}</div>
-                </div>
-              ))}
-              {d.encaixe === "Não atende" && g.situacao === "ativo" && (
-                <div className="aviso atencao">O produto não atende a dor deste lead. Considere marcar como perdido com esse motivo, em &quot;Situação&quot;.</div>
-              )}
               <h2 style={{ marginTop: 10 }}>Números da operação</h2>
               <div className="grade g2">
                 <label className="campo"><span>Retenção na 2ª revisão (%)</span><input name="diag_retencao_2a" defaultValue={d.retencao_2a ?? ""} /></label>

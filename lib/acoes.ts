@@ -117,7 +117,21 @@ export async function mudarResponsavel(grupoId: string, usuarioId: string) {
 
 // ---------------- Cadastro ----------------
 
-const CAMPOS_DIAG = ["dor", "encaixe", "papel", "decisor", "orcamento", "implantacao", "retencao_2a", "planos_hoje", "ticket_revisao", "entregas_loja", "proximo_passo", "data_proximo_passo"];
+const CAMPOS_DIAG = ["retencao_2a", "planos_hoje", "ticket_revisao", "entregas_loja", "proximo_passo", "data_proximo_passo"];
+const CAMPOS_QUALIF = ["dor", "encaixe", "papel", "decisor", "orcamento", "implantacao"];
+
+/** Qualificação: bloco próprio na ficha; mescla no diagnóstico sem apagar os números da operação. */
+export async function salvarQualificacao(grupoId: string, _: unknown, f: FormData) {
+  const u = await exigirUsuario();
+  const antes = await q1<{ diagnostico: Record<string, string | null> }>("SELECT diagnostico FROM grupo WHERE id=$1", [grupoId]);
+  const novo: Record<string, string | null> = {};
+  for (const c of CAMPOS_QUALIF) novo[c] = s(f, `diag_${c}`);
+  await q("UPDATE grupo SET diagnostico = diagnostico || $2::jsonb, atualizado_em=now() WHERE id=$1", [grupoId, JSON.stringify(novo)]);
+  const mudou = CAMPOS_QUALIF.filter((c) => (antes?.diagnostico?.[c] ?? null) !== novo[c] && novo[c]);
+  if (mudou.length) await registrar(grupoId, "nota", "Qualificação atualizada", u.id, mudou.map((c) => `${c}: ${novo[c]}`).join("\n"));
+  atualizarTelas(grupoId);
+  return { ok: "Qualificação salva." };
+}
 
 export async function salvarGrupo(grupoId: string, _: unknown, f: FormData) {
   await exigirUsuario();
@@ -126,7 +140,7 @@ export async function salvarGrupo(grupoId: string, _: unknown, f: FormData) {
   const diag: Record<string, string | null> = {};
   for (const c of CAMPOS_DIAG) diag[c] = s(f, `diag_${c}`);
   await q(`UPDATE grupo SET nome=$2, tipo=COALESCE($3,'Concessionária'), origem=$4, origem_interna=$5, segmento=$6, marcas=$7,
-           num_lojas=GREATEST(COALESCE($8,1),1), entregas_mes=$9, pacote=COALESCE($10,'essencial'), observacoes=$11, diagnostico=$12,
+           num_lojas=GREATEST(COALESCE($8,1),1), entregas_mes=$9, pacote=COALESCE($10,'essencial'), observacoes=$11, diagnostico=diagnostico || $12::jsonb,
            como_conheceu=$13, atualizado_em=now()
            WHERE id=$1`,
     [grupoId, nome, s(f, "tipo"), s(f, "origem"), s(f, "origem_interna"), s(f, "segmento"), s(f, "marcas"),

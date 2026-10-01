@@ -32,7 +32,7 @@ export function SeletorEtapa({ valor, opcoes, faltando, portao, acao }: {
           <textarea value={just} onChange={(e) => setJust(e.target.value)} placeholder="Ex.: diretor pediu a reunião direto; vamos qualificar nela" />
           <div className="linha">
             <button type="button" className="btn btn-mini btn-ink" disabled={just.trim().length < 5} onClick={() => mudar(pedindo, just)}>Avançar mesmo assim</button>
-            <button type="button" className="btn btn-mini" onClick={() => { setPedindo(null); setJust(""); }}>Voltar e qualificar</button>
+            <button type="button" className="btn btn-mini" onClick={() => { setPedindo(null); setJust(""); document.getElementById("qualificacao")?.scrollIntoView({ behavior: "smooth", block: "start" }); }}>Voltar e qualificar</button>
           </div>
         </div>
       )}
