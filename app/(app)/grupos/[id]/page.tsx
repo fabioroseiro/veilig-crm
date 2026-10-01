@@ -11,6 +11,7 @@ import { planoDe, NOME_CADENCIA, type TipoCadencia } from "@/lib/plano";
 import { propostasDoGrupo } from "@/lib/proposta";
 import { STATUS_PROPOSTA, PACOTES_PROPOSTA } from "@/lib/proposta-tipos";
 import { criarProposta } from "@/lib/acoes-proposta";
+import { Jornada } from "@/components/Jornada";
 
 export const dynamic = "force-dynamic";
 
@@ -81,6 +82,8 @@ export default async function Ficha({ params }: { params: Promise<{ id: string }
           {" "}Sem um e-mail válido, este lead não recebe os e-mails da cadência. Cadastre em Contatos → Editar.
         </div>
       )}
+
+      <Jornada grupoId={id} etapa={g.etapa} />
 
       <div className="ficha">
         <div className="grade">

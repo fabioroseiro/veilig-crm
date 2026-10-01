@@ -212,3 +212,32 @@ td{padding:9px 8px;border-bottom:1px solid var(--line);vertical-align:top}
 .kit-ramos>div{border-left:3px solid var(--acc);background:var(--acc-soft);border-radius:0 8px 8px 0;padding:8px 10px;font-size:13px}
 .kit-ramos p{margin:3px 0 0}
 @media (max-width:900px){.kit-ramos{grid-template-columns:1fr}}
+
+/* Onde estamos (jornada do lead) */
+.jornada{margin-bottom:16px}
+.j-funil{list-style:none;display:flex;gap:4px;padding:0;margin:14px 0 10px;overflow-x:auto}
+.j-funil li{flex:1;min-width:92px;text-align:center;font-size:12px;font-weight:600;padding:6px 8px;background:var(--soft);color:var(--muted);clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%,8px 50%)}
+.j-funil li:first-child{clip-path:polygon(0 0,calc(100% - 8px) 0,100% 50%,calc(100% - 8px) 100%,0 100%)}
+.j-funil li.feito{background:#cfe9ef;color:var(--ink)}
+.j-funil li.atual{background:var(--ink);color:#fff}
+.j-resumo{margin:6px 0 10px;font-size:14px;font-weight:600}
+.j-toques{list-style:none;display:flex;gap:6px;padding:0 0 4px;margin:0;overflow-x:auto}
+.j-toque{min-width:86px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;display:flex;flex-direction:column;gap:1px;font-size:12px;background:#fff}
+.j-toque .n{font-weight:800;font-size:13px}
+.j-toque .c{color:var(--muted)}
+.j-toque .d{font-weight:600;min-height:16px}
+.j-toque.feito{background:#e8f6ee;border-color:#b7e0c8}
+.j-toque.feito .n::after{content:" ✓";color:var(--ok)}
+.j-toque.atual{background:var(--ink);border-color:var(--ink);color:#fff}
+.j-toque.atual .c{color:#cfe3e8}
+.j-toque.pendente{background:#fff4d6;border-color:#f0d58a}
+.j-toque.falha{background:#fdeceb;border-color:#efb9b3}
+.j-toque.pulado{opacity:.55}
+.j-toque.futuro .d{color:var(--muted);font-weight:500}
+.j-contatos{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:12px;font-size:13px}
+.j-pessoa{border:1px solid var(--line);border-radius:99px;padding:3px 10px;background:#fff}
+.j-pessoa small{color:var(--muted);margin-left:4px}
+.j-pessoa.feito{background:var(--soft)}
+.j-pessoa.atual{background:var(--ink);color:#fff;border-color:var(--ink)}
+.j-pessoa.atual small{color:#cfe3e8}
+.j-pessoa.fora{opacity:.6}
