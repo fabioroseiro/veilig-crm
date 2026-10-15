@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FormAcao, Enviar } from "./FormAcao";
 import { aceitarProposta, pedirPrazo } from "@/lib/acoes-proposta-cliente";
 
@@ -9,8 +9,23 @@ export function AcoesCliente({ token, podeAceitar, contato, minData, sugestao, e
   escolherOnboarding?: boolean;
 }) {
   const [aba, setAba] = useState<"aceitar" | "prazo" | null>(null);
+  const [formato, setFormato] = useState<"consultivo" | "online" | null>(null);
+  const caixa = useRef<HTMLDivElement>(null);
+
+  // Os botões da apresentação não gravam nada: abrem este formulário já marcado.
+  useEffect(() => {
+    function abrir(ev: Event) {
+      const d = (ev as CustomEvent<{ onboarding?: "consultivo" | "online" | null }>).detail;
+      if (d?.onboarding) setFormato(d.onboarding);
+      setAba(podeAceitar ? "aceitar" : "prazo");
+      requestAnimationFrame(() => caixa.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    }
+    addEventListener("veilig:aceitar", abrir);
+    return () => removeEventListener("veilig:aceitar", abrir);
+  }, [podeAceitar]);
+
   return (
-    <div className="caixa acoes-cliente">
+    <div className="caixa acoes-cliente" ref={caixa}>
       <h2>Como deseja seguir?</h2>
       <div className="linha">
         {podeAceitar && <button className={`btn ${aba === "aceitar" ? "btn-ink" : ""}`} onClick={() => setAba("aceitar")}>Aceitar proposta</button>}
@@ -26,8 +41,8 @@ export function AcoesCliente({ token, podeAceitar, contato, minData, sugestao, e
           {escolherOnboarding && (
             <fieldset className="escolha-onb">
               <legend>Formato de onboarding</legend>
-              <label className="check"><input type="radio" name="onboarding" value="consultivo" required /> Consultivo: cerca de 6 semanas, com encontros presenciais nos marcos</label>
-              <label className="check"><input type="radio" name="onboarding" value="online" /> Online: cerca de 3 semanas, por vídeo</label>
+              <label className="check"><input type="radio" name="onboarding" value="consultivo" required defaultChecked={formato === "consultivo"} /> Consultivo: cerca de 6 semanas, com encontros presenciais nos marcos</label>
+              <label className="check"><input type="radio" name="onboarding" value="online" defaultChecked={formato === "online"} /> Online: cerca de 3 semanas, por vídeo</label>
             </fieldset>
           )}
           <label className="check"><input type="checkbox" name="concordo" required /> Li e aceito as condições desta proposta, sujeitas à assinatura do contrato.</label>

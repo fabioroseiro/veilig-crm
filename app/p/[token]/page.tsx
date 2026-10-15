@@ -1,11 +1,13 @@
+import Script from "next/script";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { q } from "@/lib/db";
 import { propostaPorToken, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
 import { onboardingDe, ONBOARDING } from "@/lib/proposta-tipos";
-import { conteudoProposta, dataExtenso } from "@/lib/proposta-conteudo";
-import { PropostaDoc } from "@/components/PropostaDoc";
+import { dataExtenso } from "@/lib/proposta-conteudo";
+import { renderProposta } from "@/lib/proposta/render";
+import { entradaDaProposta, metaDaProposta, ASSETS_PROPOSTA } from "@/lib/proposta/apresentacao";
 import { AcoesCliente } from "@/components/AcoesCliente";
 import { hojeISO, somaDias } from "@/lib/regras";
 
@@ -30,8 +32,12 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
   }
 
   const rem = await remetenteProposta();
-  const c = conteudoProposta(p.dados, p.numero, emitidaISO(p), p.validade, rem);
   const expirada = vencida(p);
+  const apresentacao = renderProposta(
+    entradaDaProposta(p.dados),
+    metaDaProposta(p.dados, p.numero, emitidaISO(p), p.validade, rem.nome),
+    ASSETS_PROPOSTA,
+  );
 
   return (
     <main className="cliente">
@@ -45,10 +51,8 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
         <div className="aviso atencao" style={{ marginBottom: 16 }}>A validade desta proposta terminou em {dataExtenso(p.validade)}. Se precisar, peça mais prazo abaixo.</div>
       ) : null}
 
-      <div className="linha" style={{ justifyContent: "flex-end", marginBottom: 12 }}>
-        {p.status !== "cancelada" && <a className="btn" href={`/p/${token}/pdf`} target="_blank" rel="noopener">Baixar PDF</a>}
-      </div>
-      <PropostaDoc c={c} />
+      <div dangerouslySetInnerHTML={{ __html: apresentacao.html }} />
+      <Script id="proposta-slides" dangerouslySetInnerHTML={{ __html: apresentacao.script }} />
 
       {["enviada", "prazo_pedido"].includes(p.status) && (
         <AcoesCliente token={token} podeAceitar={!expirada} contato={{ nome: p.dados.contato_nome, cargo: p.dados.contato_cargo, email: p.dados.contato_email }}

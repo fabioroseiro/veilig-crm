@@ -2,12 +2,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { q1 } from "@/lib/db";
 import { propostaPorId, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
-import { PACOTES_PROPOSTA, STATUS_PROPOSTA, ONBOARDING, OPCOES_ONBOARDING, onboardingDe, onboardingSugerido } from "@/lib/proposta-tipos";
+import { PACOTES_PROPOSTA, STATUS_PROPOSTA, ONBOARDING, OPCOES_ONBOARDING, onboardingDe, onboardingSugerido, segmentoDe, setupsDe } from "@/lib/proposta-tipos";
 import { conteudoProposta, dataExtenso } from "@/lib/proposta-conteudo";
 import { envioReal } from "@/lib/correio";
-import { hojeISO, somaDias } from "@/lib/regras";
+import { hojeISO, somaDias, SEGMENTOS } from "@/lib/regras";
 import * as P from "@/lib/acoes-proposta";
-import { PropostaDoc } from "@/components/PropostaDoc";
+import Script from "next/script";
+import { renderProposta } from "@/lib/proposta/render";
+import { entradaDaProposta, metaDaProposta, ASSETS_PROPOSTA } from "@/lib/proposta/apresentacao";
 import { FormAcao, Enviar } from "@/components/FormAcao";
 import { BotaoAcao } from "@/components/Seletor";
 
@@ -22,8 +24,13 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
   if (!p || p.grupo_id !== id) notFound();
   const g = await q1<{ nome: string }>("SELECT nome FROM grupo WHERE id=$1", [id]);
   const rem = await remetenteProposta();
-  const c = conteudoProposta(p.dados, p.numero, p.status === "rascunho" ? hojeISO() : emitidaISO(p), p.validade, rem);
+  const previa = renderProposta(
+    entradaDaProposta(p.dados),
+    metaDaProposta(p.dados, p.numero, p.status === "rascunho" ? hojeISO() : emitidaISO(p), p.validade, rem.nome, true),
+    ASSETS_PROPOSTA,
+  );
   const d = p.dados;
+  const setups = setupsDe(d);
   const link = await P.linkProposta(p.token);
   const padrao = await P.mensagemPadrao(p);
   const rascunho = p.status === "rascunho";
@@ -72,6 +79,9 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
                 </div>
                 <label className="campo"><span>E-mail do contato</span><input name="contato_email" type="email" defaultValue={d.contato_email} /></label>
                 <label className="campo"><span>Marcas</span><input name="marcas" defaultValue={d.marcas} placeholder="Ex.: Hyundai, Toyota" /></label>
+                <label className="campo"><span>Segmento (define as revisões por ano na simulação)</span>
+                  <select name="segmento" defaultValue={segmentoDe(d)}>{Object.entries(SEGMENTOS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>
+                </label>
 
                 <h2 style={{ fontSize: 14, marginTop: 8 }}>Operação (base da simulação)</h2>
                 <div className="grade g3">
@@ -87,7 +97,8 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
                     <select name="pacote" defaultValue={d.pacote}>{Object.entries(PACOTES_PROPOSTA).map(([k, v]) => <option key={k} value={k}>{v.nome}</option>)}</select>
                   </label>
                   <label className="campo"><span>Recorrente por loja (R$)</span><input name="recorrente_loja" type="number" min={0} step="0.01" defaultValue={d.recorrente_loja} required /></label>
-                  <label className="campo"><span>Setup total (R$; 0 = isento)</span><input name="setup_total" type="number" min={0} step="0.01" defaultValue={d.setup_total} required /></label>
+                  <label className="campo"><span>Implantação consultiva (R$; 0 = isento)</span><input name="setup_total" type="number" min={0} step="0.01" defaultValue={setups.consultivo} required /></label>
+                  <label className="campo"><span>Implantação online (R$; 0 = isento)</span><input name="setup_online" type="number" min={0} step="0.01" defaultValue={setups.online} required /></label>
                   <label className="campo"><span>Observação do setup</span><input name="setup_obs" defaultValue={d.setup_obs} placeholder="Ex.: condição de lançamento" /></label>
                   <label className="campo"><span>Taxa de sucesso (%)</span><input name="fee" type="number" min={0} max={100} step="0.1" defaultValue={d.fee} required /></label>
                   <label className="campo"><span>Vencimento das faturas (dia)</span><input name="vencimento_dia" type="number" min={1} max={28} defaultValue={d.vencimento_dia} required /></label>
@@ -165,7 +176,8 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
         </div>
 
         <div>
-          <PropostaDoc c={c} />
+          <div dangerouslySetInnerHTML={{ __html: previa.html }} />
+          <Script id="previa-proposta" dangerouslySetInnerHTML={{ __html: previa.script }} />
         </div>
       </div>
     </>

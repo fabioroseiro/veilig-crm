@@ -5,7 +5,7 @@ import { q, q1 } from "./db";
 import { exigirUsuario } from "./auth";
 import { lerConfig } from "./config";
 import { aplicarEtapa, closerId } from "./funil";
-import { hojeISO, somaDias } from "./regras";
+import { hojeISO, somaDias, SEGMENTOS } from "./regras";
 import { envioReal, transportador } from "./correio";
 import { urlApp } from "./mensagem";
 import {
@@ -48,8 +48,10 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
   }
   const d: DadosProposta = {
     empresa: s(f, "empresa"), contato_nome: s(f, "contato_nome"), contato_cargo: s(f, "contato_cargo"), contato_email: s(f, "contato_email").toLowerCase(),
-    marcas: s(f, "marcas"), lojas: Math.round(n(f, "lojas")), vendas_loja: Math.round(n(f, "vendas_loja")), ticket: n(f, "ticket"),
-    pacote, recorrente_loja: recorrente, setup_total: n(f, "setup_total"), setup_obs: s(f, "setup_obs"), fee: n(f, "fee"),
+    marcas: s(f, "marcas"), segmento: s(f, "segmento") in SEGMENTOS ? s(f, "segmento") : "leves",
+    lojas: Math.round(n(f, "lojas")), vendas_loja: Math.round(n(f, "vendas_loja")), ticket: n(f, "ticket"),
+    pacote, recorrente_loja: recorrente, setup_total: n(f, "setup_total"), setup_online: n(f, "setup_online"),
+    setup_obs: s(f, "setup_obs"), fee: n(f, "fee"),
     onboarding: (s(f, "onboarding") in OPCOES_ONBOARDING ? s(f, "onboarding") : "online") as Onboarding,
     vencimento_dia: Math.round(n(f, "vencimento_dia")), mostrar_simulacao: f.get("mostrar_simulacao") === "on", observacoes: s(f, "observacoes"),
   };
@@ -60,7 +62,8 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
   if (!(d.vendas_loja >= 1)) erros.push("entregas por loja");
   if (!(d.ticket >= 1)) erros.push("ticket de revisão");
   if (!(d.recorrente_loja >= 0)) erros.push("recorrente por loja");
-  if (!(d.setup_total >= 0)) erros.push("setup");
+  if (!(d.setup_total >= 0)) erros.push("implantação");
+  if (!(d.setup_online >= 0)) erros.push("implantação online");
   if (!(d.fee >= 0 && d.fee <= 100)) erros.push("taxa de sucesso");
   if (!(d.vencimento_dia >= 1 && d.vencimento_dia <= 28)) erros.push("dia de vencimento (1 a 28)");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(validade) || validade < hojeISO()) erros.push("validade (data futura)");

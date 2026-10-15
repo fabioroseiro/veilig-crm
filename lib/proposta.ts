@@ -43,8 +43,8 @@ async function simulacaoDoSite(grupoId: string) {
 
 /** Dados iniciais de uma proposta nova, a partir do que o CRM já sabe do grupo. */
 export async function dadosIniciais(grupoId: string): Promise<DadosProposta> {
-  const g = await q1<{ nome: string; marcas: string | null; num_lojas: number; entregas_mes: number | null; pacote: Pacote; diagnostico: Record<string, string> }>(
-    "SELECT nome, marcas, num_lojas, entregas_mes, pacote, diagnostico FROM grupo WHERE id=$1", [grupoId]);
+  const g = await q1<{ nome: string; marcas: string | null; segmento: string | null; num_lojas: number; entregas_mes: number | null; pacote: Pacote; diagnostico: Record<string, string> }>(
+    "SELECT nome, marcas, segmento, num_lojas, entregas_mes, pacote, diagnostico FROM grupo WHERE id=$1", [grupoId]);
   if (!g) throw new Error("Grupo não encontrado");
   const c = await q1<{ nome: string | null; cargo: string | null; email: string | null }>(
     "SELECT nome, cargo, email FROM contato WHERE grupo_id=$1 ORDER BY principal DESC, criado_em LIMIT 1", [grupoId]);
@@ -58,12 +58,14 @@ export async function dadosIniciais(grupoId: string): Promise<DadosProposta> {
     contato_cargo: c?.cargo ?? "",
     contato_email: c?.email ?? "",
     marcas: g.marcas ?? "",
+    segmento: g.segmento ?? "leves",
     lojas: g.num_lojas,
     vendas_loja: vendasLoja,
     ticket: Number(String(d.ticket_revisao ?? "").replace(/\D/g, "")) || site?.ticket || 1000,
     pacote,
     recorrente_loja: cfg.precos[pacote] ?? t.recorrente[pacote],
     setup_total: setupTabela(t, g.num_lojas),
+    setup_online: setupTabela(t, g.num_lojas),
     setup_obs: "",
     fee: t.fee,
     onboarding: onboardingSugerido(g.num_lojas),

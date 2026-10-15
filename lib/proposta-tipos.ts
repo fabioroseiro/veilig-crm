@@ -25,12 +25,14 @@ export type DadosProposta = {
   contato_cargo: string;
   contato_email: string;
   marcas: string;
+  segmento: string;          // motos | leves | pesados | agricolas | outro — define as revisões/ano
   lojas: number;
   vendas_loja: number;       // entregas de veículos novos por loja/mês
   ticket: number;            // ticket médio de revisão
   pacote: Pacote;
   recorrente_loja: number;
-  setup_total: number;
+  setup_total: number;       // implantação do formato escolhido (ou do consultivo, quando são os dois)
+  setup_online: number;      // implantação no formato online, usada quando onboarding = "ambos"
   setup_obs: string;         // ex.: "Isento — condição de lançamento"
   fee: number;               // % sobre o valor líquido recebido
   onboarding: Onboarding;   // consultivo, online ou os dois para o cliente escolher
@@ -38,6 +40,20 @@ export type DadosProposta = {
   mostrar_simulacao: boolean;
   observacoes: string;
 };
+
+/**
+ * Valores de implantação por formato. Propostas antigas só têm `setup_total`:
+ * nelas, o valor vale para o formato ofertado e o online repete o mesmo número.
+ */
+export function setupsDe(d: DadosProposta): { consultivo: number; online: number } {
+  const total = Number(d.setup_total) || 0;
+  const online = d.setup_online === undefined || d.setup_online === null ? total : Number(d.setup_online) || 0;
+  return d.onboarding === "online" ? { consultivo: total, online: total } : { consultivo: total, online };
+}
+
+/** Segmento da proposta, com o padrão de veículos leves para cadastros antigos. */
+export const segmentoDe = (d: Partial<DadosProposta>) =>
+  d.segmento && d.segmento !== "" ? d.segmento : "leves";
 
 
 /** Os dois formatos de onboarding (material "Veilig Onboarding", setembro de 2026). */
