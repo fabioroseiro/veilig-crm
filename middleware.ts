@@ -16,4 +16,9 @@ export async function middleware(req: NextRequest) {
   return NextResponse.next();
 }
 
-export const config = { matcher: ["/((?!_next/|icon.png|logo.png|favicon.ico|fontes/).*)"] };
+// Os arquivos de /public usados na página pública da proposta precisam ficar fora do
+// middleware: sem sessão, a requisição da imagem viraria redirecionamento para o login
+// e o navegador receberia HTML no lugar do PNG.
+export const config = {
+  matcher: ["/((?!_next/|icon.png|logo.png|proposta-ciclo.png|favicon.ico|fontes/).*)"],
+};
