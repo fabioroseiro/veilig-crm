@@ -11,9 +11,8 @@ import { urlApp } from "./mensagem";
 import {
   novaProposta, propostaPorId, remetenteProposta, tabela, type Proposta,
 } from "./proposta";
-import { conteudoProposta, dataExtenso } from "./proposta-conteudo";
+import { dataExtenso } from "./proposta-conteudo";
 import { PACOTES_PROPOSTA, OPCOES_ONBOARDING, ONBOARDING, onboardingDe, type Onboarding, type DadosProposta, type Pacote } from "./proposta-tipos";
-import { gerarPdfProposta } from "./proposta-pdf";
 
 type Estado = { ok?: string; erro?: string } | null | undefined;
 const s = (f: FormData, k: string) => { const v = f.get(k); return typeof v === "string" ? v.trim() : ""; };
@@ -88,7 +87,7 @@ function htmlEmail(texto: string, link: string, rem: { nome: string; email: stri
   return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8"></head><body><div lang="pt-BR" style="font-family:Arial,Helvetica,sans-serif;font-size:15px;line-height:1.5;color:#173b43;max-width:600px">${paragrafos}<p style="margin:18px 0 0;color:#58707a;font-size:14px">${assinatura}</p></div></body></html>`;
 }
 
-/** Envia a proposta pela caixa do closer, com o PDF anexo e o link para aceite. */
+/** Envia a proposta pela caixa do closer: link da apresentação, sem anexo. */
 export async function enviarProposta(id: string, _: Estado, f: FormData): Promise<Estado> {
   const u = await exigirUsuario();
   const p = await propostaPorId(id);
@@ -106,10 +105,10 @@ export async function enviarProposta(id: string, _: Estado, f: FormData): Promis
   if (!assunto || !mensagem.includes("[Link da proposta]")) return { erro: "A mensagem precisa ter assunto e o marcador [Link da proposta]." };
 
   const rem = await remetenteProposta();
-  if (!envioReal(rem.email)) return { erro: `A caixa ${rem.email} ainda não está ligada ao CRM (falta a senha de app do Zoho na Vercel). Baixe o PDF e use "Marquei como enviada".` };
+  if (!envioReal(rem.email)) return { erro: `A caixa ${rem.email} ainda não está ligada ao CRM (falta a senha de app do Zoho na Vercel). Envie pelo seu e-mail e use "Marquei como enviada".` };
   const link = await linkProposta(p.token);
-  const c = conteudoProposta(p.dados, p.numero, hojeISO(), p.validade, rem);
-  const pdf = await gerarPdfProposta(c);
+  // Sem anexo: a proposta é a apresentação do link, e o PDF o cliente gera por lá,
+  // sempre igual ao que ele vê na tela. Anexo separado volta a divergir.
   try {
     await transportador(rem.email).sendMail({
       from: { name: rem.nome, address: rem.email },
@@ -117,7 +116,6 @@ export async function enviarProposta(id: string, _: Estado, f: FormData): Promis
       subject: assunto,
       text: `${mensagem.replace("[Link da proposta]", link)}\n\n${rem.nome}\nVeilig · veilig.com.br`,
       html: htmlEmail(mensagem, link, rem),
-      attachments: [{ filename: `Proposta Veilig ${p.numero}.pdf`, content: pdf, contentType: "application/pdf" }],
     });
   } catch (e) {
     console.error("[proposta] envio:", e);
@@ -127,7 +125,7 @@ export async function enviarProposta(id: string, _: Estado, f: FormData): Promis
   return { ok: `Proposta enviada para ${para}.` };
 }
 
-/** Para quando a proposta foi enviada fora do CRM (PDF pelo e-mail do Fabio, por exemplo). */
+/** Para quando a proposta foi enviada fora do CRM (pelo e-mail do Fabio, por exemplo). */
 export async function marcarEnviada(id: string, _: Estado, f: FormData): Promise<Estado> {
   const u = await exigirUsuario();
   const p = await propostaPorId(id);
@@ -194,7 +192,7 @@ export async function mensagemPadrao(p: Proposta) {
   const nome = primeiro ? primeiro[0].toUpperCase() + primeiro.slice(1).toLowerCase() : "";
   return {
     assunto: `Proposta Veilig — ${p.dados.empresa}`,
-    mensagem: `Olá${nome ? `, ${nome}` : ""}!\n\nConforme conversamos, segue a proposta da Veilig para a operação de planos de manutenção da ${p.dados.empresa}. O PDF está anexo e, pelo link abaixo, você pode ver a proposta, aceitar as condições ou pedir mais prazo, se precisar.\n\n[Link da proposta]\n\nA proposta é válida até ${dataExtenso(p.validade)}. Fico à disposição para qualquer dúvida.`,
+    mensagem: `Olá${nome ? `, ${nome}` : ""}!\n\nConforme conversamos, segue a proposta da Veilig para a operação de planos de manutenção da ${p.dados.empresa}. Pelo link abaixo você vê a proposta completa, baixa em PDF para compartilhar internamente, aceita as condições ou pede mais prazo, se precisar.\n\n[Link da proposta]\n\nA proposta é válida até ${dataExtenso(p.validade)}. Fico à disposição para qualquer dúvida.`,
   };
 }
 

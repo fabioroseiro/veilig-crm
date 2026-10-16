@@ -3,7 +3,7 @@ import { notFound } from "next/navigation";
 import { q1 } from "@/lib/db";
 import { propostaPorId, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
 import { PACOTES_PROPOSTA, STATUS_PROPOSTA, ONBOARDING, OPCOES_ONBOARDING, onboardingDe, onboardingSugerido, segmentoDe, setupsDe } from "@/lib/proposta-tipos";
-import { conteudoProposta, dataExtenso } from "@/lib/proposta-conteudo";
+import { dataExtenso } from "@/lib/proposta-conteudo";
 import { envioReal } from "@/lib/correio";
 import { hojeISO, somaDias, SEGMENTOS } from "@/lib/regras";
 import * as P from "@/lib/acoes-proposta";
@@ -50,7 +50,7 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
           </div>
         </div>
         <div className="linha">
-          <a className="btn" href={`/p/${p.token}/pdf`} target="_blank" rel="noopener">Baixar PDF</a>
+          <a className="btn" href={`/p/${p.token}`} target="_blank" rel="noopener">Abrir o link do cliente</a>
           {!rascunho && p.status !== "cancelada" && <a className="btn" href={link} target="_blank" rel="noopener">Abrir link do cliente</a>}
           {!rascunho && <BotaoAcao className="btn" acao={P.novaVersao.bind(null, p.id)}>Nova versão</BotaoAcao>}
           {p.status !== "aceita" && p.status !== "cancelada" && <BotaoAcao className="btn btn-perigo" confirmar="Cancelar esta proposta? O link deixa de aceitar." acao={P.cancelarProposta.bind(null, p.id)}>Cancelar</BotaoAcao>}
@@ -119,14 +119,14 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
             <div className="caixa">
               <h2>{rascunho ? "Enviar ao cliente" : "Reenviar"}</h2>
               {!caixaOk && (
-                <div className="aviso atencao">A caixa {rem.email} ainda não está ligada ao CRM. Enquanto isso, baixe o PDF, envie pelo seu e-mail e use &quot;Marquei como enviada&quot;.</div>
+                <div className="aviso atencao">A caixa {rem.email} ainda não está ligada ao CRM. Enquanto isso, mande o link do cliente pelo seu e-mail e use &quot;Marquei como enviada&quot;.</div>
               )}
               <FormAcao acao={P.enviarProposta.bind(null, p.id)}>
                 <label className="campo"><span>Para</span><input name="para" type="email" defaultValue={d.contato_email} required /></label>
                 <label className="campo"><span>Cópia (opcional; separe por vírgula)</span><input name="cc" /></label>
                 <label className="campo"><span>Assunto</span><input name="assunto" defaultValue={padrao.assunto} required /></label>
                 <label className="campo"><span>Mensagem ([Link da proposta] vira o botão para o link)</span><textarea name="mensagem" rows={9} defaultValue={padrao.mensagem} required /></label>
-                <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>Sai de {rem.email}, com o PDF anexo e a sua assinatura.</p>
+                <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>Sai de {rem.email}, com o link da apresentação e a sua assinatura. Sem anexo: o cliente baixa o PDF pela própria página, sempre igual ao que ele vê.</p>
                 <Enviar>{rascunho ? "Enviar proposta" : "Reenviar"}</Enviar>
               </FormAcao>
               {rascunho && (

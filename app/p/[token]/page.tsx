@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { headers } from "next/headers";
 import { q } from "@/lib/db";
+import { usuarioAtual } from "@/lib/auth";
 import { propostaPorToken, remetenteProposta, emitidaISO, vencida } from "@/lib/proposta";
 import { onboardingDe, ONBOARDING } from "@/lib/proposta-tipos";
 import { dataExtenso } from "@/lib/proposta-conteudo";
@@ -25,7 +26,9 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
 
   const h = await headers();
   const ua = h.get("user-agent") || "";
-  if (p.status !== "cancelada" && !ROBO.test(ua) && !h.get("next-action")) {
+  // Quem está logado no CRM é a própria Veilig conferindo: não conta como abertura do cliente.
+  const interno = (await usuarioAtual()) !== null;
+  if (p.status !== "cancelada" && !interno && !ROBO.test(ua) && !h.get("next-action")) {
     const primeira = !p.aberta_em;
     await q("UPDATE proposta SET aberturas=aberturas+1, aberta_em=COALESCE(aberta_em, now()) WHERE id=$1", [p.id]);
     if (primeira) await q("INSERT INTO atividade (grupo_id, tipo, resumo) VALUES ($1,'email',$2)", [p.grupo_id, `Proposta ${p.numero} aberta pelo cliente`]);
@@ -41,6 +44,11 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
 
   return (
     <main className="cliente">
+      {interno && (
+        <div className="aviso" style={{ marginBottom: 16 }}>
+          Você está vendo o link como a Veilig: esta visita não conta como abertura do cliente.
+        </div>
+      )}
       {p.status === "cancelada" ? (
         <div className="aviso atencao" style={{ marginBottom: 16 }}>Esta proposta foi substituída ou cancelada. Fale com {rem.nome} ({rem.email}) para receber a versão atual.</div>
       ) : p.status === "aceita" ? (

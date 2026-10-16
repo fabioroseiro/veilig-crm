@@ -1,22 +1,14 @@
 import { NextResponse } from "next/server";
-import { propostaPorToken, remetenteProposta, emitidaISO } from "@/lib/proposta";
-import { conteudoProposta } from "@/lib/proposta-conteudo";
-import { gerarPdfProposta } from "@/lib/proposta-pdf";
+import { urlApp } from "@/lib/mensagem";
 
 export const dynamic = "force-dynamic";
 
-/** PDF da proposta, pelo mesmo token do link. */
+/**
+ * A proposta deixou de ter PDF próprio: ela é a apresentação do link, e o PDF o
+ * cliente gera pelo botão "Baixar PDF" da própria página, sempre igual à tela.
+ * Esta rota continua existindo só para não quebrar links já enviados.
+ */
 export async function GET(_: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
-  const p = await propostaPorToken(token);
-  if (!p || p.status === "cancelada") return NextResponse.json({ erro: "Proposta não encontrada" }, { status: 404 });
-  const pdf = await gerarPdfProposta(conteudoProposta(p.dados, p.numero, emitidaISO(p), p.validade, await remetenteProposta()));
-  return new NextResponse(new Uint8Array(pdf), {
-    headers: {
-      "content-type": "application/pdf",
-      "content-disposition": `inline; filename="Proposta Veilig ${p.numero}.pdf"`,
-      "cache-control": "private, no-store",
-      "x-robots-tag": "noindex",
-    },
-  });
+  return NextResponse.redirect(`${urlApp()}/p/${token}`, 308);
 }
