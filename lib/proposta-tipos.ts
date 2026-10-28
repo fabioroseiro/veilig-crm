@@ -29,6 +29,7 @@ export type DadosProposta = {
   lojas: number;
   vendas_loja: number;       // entregas de veículos novos por loja/mês
   ticket: number;            // ticket médio de revisão
+  adesao?: number | null;    // % de clientes que contratam o plano; vazio = faixa automática pela mensalidade
   pacote: Pacote;
   recorrente_loja: number;
   setup_total: number;       // implantação do formato escolhido (ou do consultivo, quando são os dois)

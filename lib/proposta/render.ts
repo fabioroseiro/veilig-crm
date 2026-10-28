@@ -487,7 +487,7 @@ export function renderProposta(e: EntradaProposta, meta: MetaProposta, assets: A
   ];
   let pj = HEAD("Potencial de receita para o grupo", "Projeção",
     `A partir dos seus números, com margem de 35% sobre o ticket e adesão de ${pct(p.adesao)} — ` +
-    "a faixa observada na base Veilig para esta mensalidade.", assets.logo);
+    (e.adesaoManual ? "taxa de adesão definida para este grupo." : "a faixa observada na base Veilig para esta mensalidade."), assets.logo);
   etapas.forEach(([k, v, d], i) => {
     const x = 0.5 + i * 2.28, dest = i === 3;
     pj += C(x, 1.62, 2.1, 1.35, dest ? "var(--ink)" : "var(--surface)", dest ? "var(--ink)" : "var(--border)") +

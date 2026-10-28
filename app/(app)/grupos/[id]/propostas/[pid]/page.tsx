@@ -9,6 +9,7 @@ import { hojeISO, somaDias, SEGMENTOS } from "@/lib/regras";
 import * as P from "@/lib/acoes-proposta";
 import Script from "next/script";
 import { renderProposta } from "@/lib/proposta/render";
+import { calcularProjecao } from "@/lib/proposta/modelo";
 import { entradaDaProposta, metaDaProposta, ASSETS_PROPOSTA } from "@/lib/proposta/apresentacao";
 import { FormAcao, Enviar } from "@/components/FormAcao";
 import { BotaoAcao } from "@/components/Seletor";
@@ -89,6 +90,21 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
                   <label className="campo"><span>Entregas/loja/mês</span><input name="vendas_loja" type="number" min={1} defaultValue={d.vendas_loja} required /></label>
                   <label className="campo"><span>Ticket revisão (R$)</span><input name="ticket" type="number" min={1} defaultValue={d.ticket} required /></label>
                 </div>
+                {(() => {
+                  const auto = calcularProjecao({ ...entradaDaProposta(p.dados), adesaoManual: null });
+                  const pctAuto = (auto.adesao * 100).toLocaleString("pt-BR", { maximumFractionDigits: 1 });
+                  const mens = auto.mensalidadePlano.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                  return (
+                    <>
+                      <label className="campo"><span>Taxa de adesão ao plano (%)</span>
+                        <input name="adesao" type="number" min={0.1} max={100} step="0.1" defaultValue={p.dados.adesao ?? ""} placeholder={`Automática: ${pctAuto}%`} />
+                      </label>
+                      <p className="muted" style={{ fontSize: 12, marginTop: -4 }}>
+                        % das entregas que contratam o plano. Vazio usa a faixa pela mensalidade ({mens}/mês → {pctAuto}%: até R$ 100 = 10%, até R$ 170 = 8%, acima = 6%).
+                      </p>
+                    </>
+                  );
+                })()}
                 <label className="check" style={{ marginBottom: 10 }}><input type="checkbox" name="mostrar_simulacao" defaultChecked={d.mostrar_simulacao} /> Mostrar diagnóstico, potencial e retorno estimado</label>
 
                 <h2 style={{ fontSize: 14, marginTop: 8 }}>Condição comercial</h2>

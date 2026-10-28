@@ -18,6 +18,7 @@ export function entradaDaProposta(d: DadosProposta): EntradaProposta {
     lojas: Number(d.lojas) || 1,
     vendasLoja: Number(d.vendas_loja) || 0,
     ticket: Number(d.ticket) || 0,
+    adesaoManual: Number(d.adesao) > 0 ? Number(d.adesao) / 100 : null,
     recorrenteLoja: Number(d.recorrente_loja) || 0,
     fee: Number(d.fee) || 0,
     setupConsultivo: setups.consultivo,

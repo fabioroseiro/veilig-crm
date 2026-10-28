@@ -49,6 +49,7 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
     empresa: s(f, "empresa"), contato_nome: s(f, "contato_nome"), contato_cargo: s(f, "contato_cargo"), contato_email: s(f, "contato_email").toLowerCase(),
     marcas: s(f, "marcas"), segmento: s(f, "segmento") in SEGMENTOS ? s(f, "segmento") : "leves",
     lojas: Math.round(n(f, "lojas")), vendas_loja: Math.round(n(f, "vendas_loja")), ticket: n(f, "ticket"),
+    adesao: s(f, "adesao") === "" ? null : Number(s(f, "adesao").replace(",", ".")),
     pacote, recorrente_loja: recorrente, setup_total: n(f, "setup_total"), setup_online: n(f, "setup_online"),
     setup_obs: s(f, "setup_obs"), fee: n(f, "fee"),
     onboarding: (s(f, "onboarding") in OPCOES_ONBOARDING ? s(f, "onboarding") : "online") as Onboarding,
@@ -60,6 +61,7 @@ export async function salvarProposta(id: string, _: Estado, f: FormData): Promis
   if (!(d.lojas >= 1)) erros.push("nº de lojas");
   if (!(d.vendas_loja >= 1)) erros.push("entregas por loja");
   if (!(d.ticket >= 1)) erros.push("ticket de revisão");
+  if (d.adesao !== null && d.adesao !== undefined && !(d.adesao > 0 && d.adesao <= 100)) erros.push("taxa de adesão (0,1 a 100%)");
   if (!(d.recorrente_loja >= 0)) erros.push("recorrente por loja");
   if (!(d.setup_total >= 0)) erros.push("implantação");
   if (!(d.setup_online >= 0)) erros.push("implantação online");
