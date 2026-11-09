@@ -6,6 +6,7 @@ type Props = {
   id: string; titulo: string; tipo: string; tipoNome: string; vence: string; vencida: boolean;
   grupoId: string; grupo: string; contato: string | null; zap: string | null; texto: string | null;
   responsavel?: string | null;
+  porte?: string | null;
   concluir: (e: unknown, f: FormData) => Promise<{ ok?: string; erro?: string }>;
   emailStatus?: string | null;
   salvarEmail?: (e: unknown, f: FormData) => Promise<{ ok?: string; erro?: string }>;
@@ -26,6 +27,7 @@ export function Tarefa(p: Props) {
         <div className="tit">{p.titulo}</div>
         <div className="meta">
           <Link href={`/grupos/${p.grupoId}`}>{p.grupo}</Link>
+          {p.porte ? ` · Porte ${p.porte}` : ""}
           {p.contato ? ` · ${p.contato}` : ""} · {p.tipoNome} · <span className={p.vencida ? "vencida" : ""}>{p.vencida ? `venceu ${p.vence}` : `hoje`}</span>
           {p.responsavel ? ` · ${p.responsavel}` : ""}
         </div>

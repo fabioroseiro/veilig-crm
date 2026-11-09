@@ -8,35 +8,57 @@ import { Tarefa } from "@/components/Tarefa";
 export const dynamic = "force-dynamic";
 
 type T = { id: string; titulo: string; tipo: string; texto: string | null; vence_em: string; grupo_id: string; grupo: string;
-  origem: string | null; contato: string | null; whatsapp: string | null; responsavel: string | null; email_status: string | null };
+  origem: string | null; contato: string | null; whatsapp: string | null; responsavel: string | null; email_status: string | null; porte: Porte };
 
-export default async function Hoje({ searchParams }: { searchParams: Promise<{ todas?: string }> }) {
+type Porte = "A" | "B" | "C";
+const PORTES: Porte[] = ["A", "B", "C"];
+/** Mesma regra de lib/regras.ts (porte): 10+ lojas = A, 4 a 9 = B, até 3 = C. */
+const PORTE_SQL = "CASE WHEN COALESCE(g.num_lojas,0) >= 10 THEN 'A' WHEN COALESCE(g.num_lojas,0) >= 4 THEN 'B' ELSE 'C' END";
+
+export default async function Hoje({ searchParams }: { searchParams: Promise<{ todas?: string; porte?: string }> }) {
   const u = await exigirUsuario();
-  const todas = (await searchParams).todas === "1";
+  const sp = await searchParams;
+  const todas = sp.todas === "1";
+  const porteSel = PORTES.includes(sp.porte as Porte) ? (sp.porte as Porte) : null;
+  const link = (o: { todas?: boolean; porte?: Porte | null }) => {
+    const q = new URLSearchParams();
+    if (o.todas ?? todas) q.set("todas", "1");
+    const p = o.porte === undefined ? porteSel : o.porte;
+    if (p) q.set("porte", p);
+    const s = q.toString();
+    return s ? `/hoje?${s}` : "/hoje";
+  };
   const hoje = hojeISO();
   const filtro = todas ? "" : "AND t.usuario_id = $2";
   const params = todas ? [hoje] : [hoje, u.id];
 
-  const tarefas = await q<T>(
+  const todasTarefas = await q<T>(
     `SELECT t.id, t.titulo, t.tipo, t.texto, to_char(t.vence_em,'YYYY-MM-DD') AS vence_em, g.id AS grupo_id, g.nome AS grupo, g.origem,
-            c.nome AS contato, c.whatsapp, c.email_status, us.nome AS responsavel
+            c.nome AS contato, c.whatsapp, c.email_status, us.nome AS responsavel, ${PORTE_SQL} AS porte
        FROM tarefa t JOIN grupo g ON g.id = t.grupo_id
        LEFT JOIN contato c ON c.grupo_id = g.id AND c.principal
        LEFT JOIN usuario us ON us.id = t.usuario_id
       WHERE t.feita_em IS NULL AND t.vence_em <= $1 ${filtro}
-      ORDER BY t.vence_em, t.criado_em LIMIT 200`, params);
+      ORDER BY t.vence_em, porte, t.criado_em LIMIT 200`, params);
 
+  const pProx: unknown[] = [hoje, somaDias(hoje, 7)];
+  if (!todas) pProx.push(u.id);
+  if (porteSel) pProx.push(porteSel);
   const proximas = await q<{ n: string }>(
-    `SELECT count(*) AS n FROM tarefa t WHERE t.feita_em IS NULL AND t.vence_em > $1 AND t.vence_em <= $2 ${todas ? "" : "AND t.usuario_id = $3"}`,
-    todas ? [hoje, somaDias(hoje, 7)] : [hoje, somaDias(hoje, 7), u.id]);
+    `SELECT count(*) AS n FROM tarefa t JOIN grupo g ON g.id = t.grupo_id
+      WHERE t.feita_em IS NULL AND t.vence_em > $1 AND t.vence_em <= $2
+        ${todas ? "" : "AND t.usuario_id = $3"} ${porteSel ? `AND ${PORTE_SQL} = $${pProx.length}` : ""}`, pProx);
 
-  const semContato = await q<{ id: string; nome: string; etapa: number; temperatura: string; ultimo_sinal: string | null; criado_em: string }>(
-    `SELECT g.id, g.nome, g.etapa, g.temperatura, g.ultimo_sinal, g.criado_em FROM grupo g
+  const semContatoTodos = await q<{ id: string; nome: string; etapa: number; temperatura: string; ultimo_sinal: string | null; criado_em: string; porte: Porte }>(
+    `SELECT g.id, g.nome, g.etapa, g.temperatura, g.ultimo_sinal, g.criado_em, ${PORTE_SQL} AS porte FROM grupo g
       WHERE g.situacao = 'ativo' AND g.etapa BETWEEN 2 AND 6 ${todas ? "" : "AND g.responsavel_id = $1"}
         AND COALESCE(g.ultimo_sinal, g.criado_em) < now() - interval '7 days'
         AND NOT EXISTS (SELECT 1 FROM tarefa t WHERE t.grupo_id = g.id AND t.feita_em IS NULL)
       ORDER BY COALESCE(g.ultimo_sinal, g.criado_em) LIMIT 50`, todas ? [] : [u.id]);
 
+  const contagem = Object.fromEntries(PORTES.map((p) => [p, todasTarefas.filter((t) => t.porte === p).length])) as Record<Porte, number>;
+  const tarefas = porteSel ? todasTarefas.filter((t) => t.porte === porteSel) : todasTarefas;
+  const semContato = porteSel ? semContatoTodos.filter((g) => g.porte === porteSel) : semContatoTodos;
   const vencidas = tarefas.filter((t) => t.vence_em < hoje).length;
 
   return (
@@ -47,9 +69,20 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ t
           <div className="muted">{new Date().toLocaleDateString("pt-BR", { weekday: "long", day: "numeric", month: "long", timeZone: "America/Sao_Paulo" })}</div>
         </div>
         <div className="linha">
-          <Link className={`btn ${todas ? "" : "btn-ink"}`} href="/hoje">Minhas ações</Link>
-          <Link className={`btn ${todas ? "btn-ink" : ""}`} href="/hoje?todas=1">Todas</Link>
+          <Link className={`btn ${todas ? "" : "btn-ink"}`} href={link({ todas: false })}>Minhas ações</Link>
+          <Link className={`btn ${todas ? "btn-ink" : ""}`} href={link({ todas: true })}>Todas</Link>
         </div>
+      </div>
+
+      <div className="linha" style={{ marginBottom: 12, alignItems: "center" }}>
+        <span className="muted">Porte:</span>
+        <Link className={`btn btn-mini ${porteSel ? "" : "btn-ink"}`} href={link({ porte: null })}>Todos ({todasTarefas.length})</Link>
+        {PORTES.map((p) => (
+          <Link key={p} className={`btn btn-mini ${porteSel === p ? "btn-ink" : ""}`} href={link({ porte: p })}
+            title={p === "A" ? "10 lojas ou mais" : p === "B" ? "4 a 9 lojas" : "até 3 lojas"}>
+            {p} ({contagem[p]})
+          </Link>
+        ))}
       </div>
 
       <div className="grade g4" style={{ marginBottom: 16 }}>
@@ -69,7 +102,7 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ t
               vence={dataBR(t.vence_em + "T12:00:00")} vencida={t.vence_em < hoje}
               grupoId={t.grupo_id} grupo={t.grupo} contato={t.contato} texto={texto}
               zap={linkWhatsApp(t.whatsapp, t.tipo === "whatsapp" ? texto : null)}
-              responsavel={todas ? t.responsavel : null}
+              responsavel={todas ? t.responsavel : null} porte={t.porte}
               concluir={concluirTarefa.bind(null, t.id)}
               emailStatus={t.email_status} salvarEmail={salvarEmailPrincipal.bind(null, t.grupo_id)}
               adiar1={adiarTarefa.bind(null, t.id, 1)} adiar3={adiarTarefa.bind(null, t.id, 3)} excluir={excluirTarefa.bind(null, t.id)} />
@@ -81,12 +114,13 @@ export default async function Hoje({ searchParams }: { searchParams: Promise<{ t
         <h2>Leads sem contato há mais de 7 dias e sem próxima ação</h2>
         {semContato.length === 0 ? <p className="muted">Nenhum. Todos os leads em andamento têm uma próxima ação.</p> : (
           <div className="rolagem"><table>
-            <thead><tr><th>Grupo</th><th>Etapa</th><th>Temperatura</th><th>Último sinal</th></tr></thead>
+            <thead><tr><th>Grupo</th><th>Porte</th><th>Etapa</th><th>Temperatura</th><th>Último sinal</th></tr></thead>
             <tbody>{semContato.map((g) => {
               const t = TEMPERATURAS[g.temperatura as keyof typeof TEMPERATURAS];
               return (
                 <tr key={g.id}>
                   <td><Link href={`/grupos/${g.id}`}>{g.nome}</Link></td>
+                  <td>{g.porte}</td>
                   <td>{ETAPAS[g.etapa].nome}</td>
                   <td><span className="temp"><i style={{ background: t.cor }} />{t.nome}</span></td>
                   <td className="alerta">{g.ultimo_sinal ? `há ${diasDesde(g.ultimo_sinal)} dias` : "nunca respondeu"}</td>

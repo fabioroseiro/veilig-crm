@@ -43,13 +43,14 @@ export type DadosProposta = {
 };
 
 /**
- * Valores de implantação por formato. Propostas antigas só têm `setup_total`:
- * nelas, o valor vale para o formato ofertado e o online repete o mesmo número.
+ * Valores de implantação por formato: `setup_total` é o consultivo e `setup_online` o online,
+ * qualquer que seja o formato ofertado. Propostas antigas não têm `setup_online`:
+ * nelas, o online repete o valor de `setup_total`.
  */
 export function setupsDe(d: DadosProposta): { consultivo: number; online: number } {
   const total = Number(d.setup_total) || 0;
   const online = d.setup_online === undefined || d.setup_online === null ? total : Number(d.setup_online) || 0;
-  return d.onboarding === "online" ? { consultivo: total, online: total } : { consultivo: total, online };
+  return { consultivo: total, online };
 }
 
 /** Segmento da proposta, com o padrão de veículos leves para cadastros antigos. */
