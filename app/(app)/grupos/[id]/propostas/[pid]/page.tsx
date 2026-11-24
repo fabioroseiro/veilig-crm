@@ -32,7 +32,6 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
   );
   const d = p.dados;
   const setups = setupsDe(d);
-  const link = await P.linkProposta(p.token);
   const padrao = await P.mensagemPadrao(p);
   const rascunho = p.status === "rascunho";
   const aberta = ["enviada", "prazo_pedido"].includes(p.status);
@@ -51,8 +50,7 @@ export default async function EditarProposta({ params }: { params: Promise<{ id:
           </div>
         </div>
         <div className="linha">
-          <a className="btn" href={`/p/${p.token}`} target="_blank" rel="noopener">Abrir o link do cliente</a>
-          {!rascunho && p.status !== "cancelada" && <a className="btn" href={link} target="_blank" rel="noopener">Abrir link do cliente</a>}
+          <a className="btn" href={`/p/${p.token}`} target="_blank" rel="noopener">{rascunho ? "Ver como o cliente vai ver" : "Abrir o link do cliente"}</a>
           {!rascunho && <BotaoAcao className="btn" acao={P.novaVersao.bind(null, p.id)}>Nova versão</BotaoAcao>}
           {p.status !== "aceita" && p.status !== "cancelada" && <BotaoAcao className="btn btn-perigo" confirmar="Cancelar esta proposta? O link deixa de aceitar." acao={P.cancelarProposta.bind(null, p.id)}>Cancelar</BotaoAcao>}
         </div>

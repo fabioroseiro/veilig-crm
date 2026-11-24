@@ -22,13 +22,15 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
   const { token } = await params;
   if (!/^[A-Za-z0-9_-]{20,40}$/.test(token)) notFound();
   const p = await propostaPorToken(token);
-  if (!p || p.status === "rascunho") notFound();
+  // Quem está logado no CRM é a própria Veilig conferindo: não conta como abertura do cliente,
+  // e pode ver o rascunho antes do envio. Para qualquer outra pessoa, rascunho não existe.
+  const interno = (await usuarioAtual()) !== null;
+  if (!p || (p.status === "rascunho" && !interno)) notFound();
+  const rascunho = p.status === "rascunho";
 
   const h = await headers();
   const ua = h.get("user-agent") || "";
-  // Quem está logado no CRM é a própria Veilig conferindo: não conta como abertura do cliente.
-  const interno = (await usuarioAtual()) !== null;
-  if (p.status !== "cancelada" && !interno && !ROBO.test(ua) && !h.get("next-action")) {
+  if (p.status !== "cancelada" && !rascunho && !interno && !ROBO.test(ua) && !h.get("next-action")) {
     const primeira = !p.aberta_em;
     await q("UPDATE proposta SET aberturas=aberturas+1, aberta_em=COALESCE(aberta_em, now()) WHERE id=$1", [p.id]);
     if (primeira) await q("INSERT INTO atividade (grupo_id, tipo, resumo) VALUES ($1,'email',$2)", [p.grupo_id, `Proposta ${p.numero} aberta pelo cliente`]);
@@ -38,15 +40,17 @@ export default async function PropostaCliente({ params }: { params: Promise<{ to
   const expirada = vencida(p);
   const apresentacao = renderProposta(
     entradaDaProposta(p.dados),
-    metaDaProposta(p.dados, p.numero, emitidaISO(p), p.validade, rem.nome),
+    metaDaProposta(p.dados, p.numero, rascunho ? hojeISO() : emitidaISO(p), p.validade, rem.nome),
     ASSETS_PROPOSTA,
   );
 
   return (
     <main className="cliente">
       {interno && (
-        <div className="aviso" style={{ marginBottom: 16 }}>
-          Você está vendo o link como a Veilig: esta visita não conta como abertura do cliente.
+        <div className={`aviso${rascunho ? " atencao" : ""}`} style={{ marginBottom: 16 }}>
+          {rascunho
+            ? "Rascunho: é assim que o cliente vai ver a proposta. Ele só consegue abrir este link depois do envio."
+            : "Você está vendo o link como a Veilig: esta visita não conta como abertura do cliente."}
         </div>
       )}
       {p.status === "cancelada" ? (

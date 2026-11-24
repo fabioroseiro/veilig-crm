@@ -113,7 +113,11 @@ export interface Roi {
   voltariam: number;
   valorNaoVoltariam: number;
   valorVoltariam: number;
+  /** Ano 1 com Capex (implantação) e Opex (recorrente e taxa de sucesso). */
   ano1: CenarioRoi;
+  /** Ano 1 só com o Opex: a mesma receita, sem a implantação. */
+  ano1Opex: CenarioRoi;
+  /** Do 2º ano em diante: só Opex, porque a implantação já foi paga. */
   regime: CenarioRoi;
   /** Mês em que o acumulado do ganho passa o acumulado do custo, com setup. */
   paybackMes: number | null;
@@ -178,6 +182,7 @@ export function calcularRoi(e: EntradaProposta, p: Projecao): Roi {
     valorNaoVoltariam: naoVoltariam * p.valorAnualPlano,
     valorVoltariam: voltariam * acrescimo,
     ano1: cenario("Ano 1", p.receitaAno1, setupAplicado),
+    ano1Opex: cenario("Ano 1, só Opex", p.receitaAno1, 0),
     regime: cenario("Em regime", p.receitaRegime, 0),
     paybackMes: payback(setupAplicado),
     paybackSemSetup: payback(0),

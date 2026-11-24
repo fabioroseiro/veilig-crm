@@ -267,12 +267,12 @@ function slideRoi(e: EntradaProposta, p: Projecao, r: Roi, a: AssetsProposta) {
     T("Ano 1", 3.45, 3.24, 0.95, 0.22, 8, "var(--muted)", true, "right", "top", 1.2, `letter-spacing:${PT(0.6)};`) +
     T("Em regime", 4.42, 3.24, 0.95, 0.22, 8, "var(--muted)", true, "right", "top", 1.2, `letter-spacing:${PT(0.6)};`);
   const custos: [string, string, string, string][] = [
-    ["Recorrente da plataforma", `${num(e.lojas)} lojas × ${brl(e.recorrenteLoja)} × 12`,
+    ["Recorrente da plataforma", `Opex · ${num(e.lojas)} lojas × ${brl(e.recorrenteLoja)} × 12`,
      brl(r.ano1.recorrente), brl(r.regime.recorrente)],
-    [`Taxa de sucesso de ${num(e.fee)}%`, "sobre o valor líquido recebido dos planos",
+    [`Taxa de sucesso de ${num(e.fee)}%`, "Opex · sobre o valor líquido recebido dos planos",
      brl(r.ano1.taxaSucesso), brl(r.regime.taxaSucesso)],
-    ["Implantação", setup <= 0 ? "isenta nesta proposta"
-       : escolhaAberta ? "no formato consultivo, o de maior valor" : "parcelada, cobrada só no 1º ano",
+    ["Implantação", setup <= 0 ? "Capex · isenta nesta proposta"
+       : escolhaAberta ? "Capex · no formato de maior valor, só no 1º ano" : "Capex · parcelada, cobrada só no 1º ano",
      brl(setup), "—"],
   ];
   custos.forEach((c, i) => {
@@ -288,22 +288,26 @@ function slideRoi(e: EntradaProposta, p: Projecao, r: Roi, a: AssetsProposta) {
     T(brl(r.ano1.custo), 3.45, 4.68, 0.95, 0.26, 10, "var(--ink)", true, "right", "middle") +
     T(brl(r.regime.custo), 4.42, 4.68, 0.95, 0.26, 10, "var(--ink)", true, "right", "middle");
 
-  // Retorno nos dois horizontes.
+  // Retorno: com Capex e Opex (ano 1, com a implantação) e só com o Opex.
   o += T("Retorno sobre o investimento", 5.74, 3.22, 3.8, 0.26, 11.5, "var(--ink)", true);
-  ([[r.ano1, "No ano 1", setup > 0 ? "já com a implantação" : "sem implantação a pagar"],
-    [r.regime, "Em regime", "do 2º ano em diante"]] as [typeof r.ano1, string, string][])
-    .forEach(([c, rot, sub], i) => {
+  ([[r.ano1, "Capex + Opex", setup > 0 ? "ano 1, com a implantação" : "ano 1 · implantação isenta", ""],
+    [r.ano1Opex, "Só Opex", "ano 1, sem a implantação", `Em regime, do 2º ano: <b>${brlCent(r.regime.multiplo)}</b>`]] as [typeof r.ano1, string, string, string][])
+    .forEach(([c, rot, sub, extra], i) => {
       const x = 5.74 + i * 1.95, dest = i === 1;
       o += C(x, 3.52, 1.81, 1.3, dest ? "var(--accent-soft)" : "var(--surface)", dest ? "var(--accent)" : "var(--border)") +
-        T(rot, x + 0.16, 3.62, 1.5, 0.2, 8.5, "var(--ink)", true) +
-        T(sub, x + 0.16, 3.81, 1.55, 0.26, 7, "var(--muted)", false, "left", "top", 1.2) +
-        T(brlCent(c.multiplo), x + 0.16, 4.07, 1.5, 0.36, 19, "var(--ink)", true) +
-        T("de volta a cada R$ 1 investido", x + 0.16, 4.45, 1.55, 0.3, 7, "var(--muted)", false, "left", "top", 1.25);
+        T(rot, x + 0.16, 3.6, 1.5, 0.2, 8.5, "var(--ink)", true) +
+        T(sub, x + 0.16, 3.78, 1.55, 0.2, 7, "var(--muted)", false, "left", "top", 1.2) +
+        T(brlCent(c.multiplo), x + 0.16, 3.98, 1.5, 0.34, 18, "var(--ink)", true) +
+        T("de volta a cada R$ 1 investido", x + 0.16, 4.33, 1.55, 0.2, 7, "var(--muted)", false, "left", "top", 1.25) +
+        (extra ? T(extra, x + 0.16, 4.53, 1.55, 0.2, 7, "var(--ink)", false, "left", "top", 1.25) : "");
     });
-  o += (r.paybackMes
-    ? T(`O investimento se paga no ${r.paybackMes}º mês${setup > 0 ? ", já contando a implantação" : ""}.`,
+  const pb = r.paybackMes, pbOpex = r.paybackSemSetup;
+  o += pb
+    ? T(setup > 0 && pbOpex && pbOpex !== pb
+          ? `Se paga no ${pb}º mês com a implantação; no ${pbOpex}º só com o Opex.`
+          : `O investimento se paga no ${pb}º mês.`,
         5.74, 4.92, 3.8, 0.2, 8, "var(--accent)", true)
-    : "");
+    : "";
 
   o += T("Receita incremental, não lucro: o custo das revisões feitas pela oficina continua sendo da concessionária. " +
          "Premissa de que metade dos clientes não voltaria para a revisão seguinte sem o plano. Estimativa, não garantia de resultado.",
@@ -762,6 +766,9 @@ color:var(--ink);border-radius:8px;padding:9px 15px;cursor:pointer}
 .hit{cursor:pointer}.hit:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
 @media print{
 .demo,.nav{display:none!important}
+body *:not(.palco):not(.palco *):not(:has(.palco)){display:none!important}
+body *:has(.palco){display:block!important;position:static!important;margin:0!important;padding:0!important;border:0!important;
+box-shadow:none!important;background:none!important;max-width:none!important;width:auto!important;min-height:0!important;overflow:visible!important}
 .palco{max-width:none;margin:0;padding:0}
 .slide{width:10in;height:5.625in;border-radius:0;box-shadow:none;break-after:page;page-break-after:always}
 .slide:last-of-type{break-after:auto;page-break-after:auto}
