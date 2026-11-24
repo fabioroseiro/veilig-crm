@@ -374,26 +374,6 @@ function slideResultados(a: AssetsProposta) {
   return o;
 }
 
-function slideDetalhe(a: AssetsProposta) {
-  let o = HEAD("O que cada ponto entrega", "Abrangência", undefined, a.logo);
-  ([["Regras do plano", "Revisões cobertas, tetos, exclusões, carência por faixa de idade e política de aceitação."],
-    ["Venda no balcão", "O vendedor descreve o veículo e o sistema mostra só os planos elegíveis, com preço e carência calculados."],
-    ["Contrato digital", "Gerado do mesmo cadastro que o vendedor vê na tela e arquivado no ato da venda."],
-    ["Cobrança recorrente", "Mensalidade em cartão, Pix ou boleto, com lembrete e conciliação automáticos."],
-    ["Repasse automático", "Divisão do valor na liquidação: a loja recebe sua parte sem acerto manual."],
-    ["Portal do cliente", "Situação da assinatura, contrato, segunda via e troca de cartão."],
-    ["Comissão do vendedor", "Relatório de vendas por vendedor e por período, com cancelamentos."],
-    ["Indicadores e integração", "Painéis por loja e por grupo, e API para consulta pelo DMS."]] as [string, string][])
-    .forEach(([t, p], i) => {
-      const x = 0.5 + (i % 2) * 4.6, y = 1.2 + Math.floor(i / 2) * 1.02;
-      o += C(x, y, 4.4, 0.9) +
-        A(x + 0.18, y + 0.17, 0.18, 0.18, "", `background:var(--accent);border-radius:${U(0.05)};`) +
-        T(t, x + 0.45, y + 0.1, 3.8, 0.3, 10.5, "var(--ink)", true, "left", "middle") +
-        T(p, x + 0.18, y + 0.42, 4.05, 0.46, 8, "var(--muted)", false, "left", "top", 1.3);
-    });
-  return o;
-}
-
 /** Só entra quando o grupo ainda vai escolher o modelo. */
 function slideComparativo(a: AssetsProposta) {
   let o = HEAD("Os dois modelos, lado a lado", "A decisão do grupo",
@@ -442,9 +422,8 @@ export function renderProposta(e: EntradaProposta, meta: MetaProposta, assets: A
   sl.push({ id: "resultados", cls: "", html: slideResultados(assets) });
   sl.push({ id: "mandala", cls: "", html:
     HEAD("Os pontos que a Veilig toca na sua operação", "Abrangência", undefined, assets.logo) +
-    A(0.5, 1.08, 9.0, 4.23, `<img src="${assets.mandala}" alt="Ciclo do plano">`,
+    A(0.5, 1.08, 9.0, 4.23, `<img src="${assets.mandala}?v=2" alt="O ciclo do cliente: regras do plano, pacotes de revisão, venda, contrato, cobrança, repasse, portal, app Meu Veilig, comissão e indicadores">`,
       "display:flex;align-items:center;justify-content:center;") });
-  sl.push({ id: "detalhe", cls: "", html: slideDetalhe(assets) });
   sl.push({ id: "escopo", cls: "", html: slideEscopo(e, p, meta, assets) });
 
   // ---- onboarding
@@ -646,15 +625,16 @@ export function renderProposta(e: EntradaProposta, meta: MetaProposta, assets: A
   ([["Vigência", "Contrato mensal, sem prazo de fidelidade. Pode ser encerrado por qualquer das partes com aviso de 90 dias."],
     ["Reajuste", "O recorrente é reajustado anualmente pelo IPCA, a contar da assinatura."],
     ["Titularidade da cobrança", "A cobrança é emitida pela plataforma e dividida na liquidação, com repasse automático à conta da concessionária."],
-    ["Operação fiscal", "A concessionária emite a nota do plano ao consumidor. A Veilig emite nota da taxa de sucesso e do recorrente."],
     ["Natureza do serviço", "A Veilig opera a plataforma e a intermediação de pagamentos. A manutenção é prestada pela concessionária."],
     ["Validade da proposta", `Esta proposta é válida até ${esc(meta.validaAte)}.`]] as [string, string][])
     .forEach(([t, d], i) => {
       const c = i % 2, lin = Math.floor(i / 2);
       const x = 0.5 + c * 4.6, y = 1.5 + lin * 1.2;
-      cd += C(x, y, 4.4, 1.08, lin === 2 ? "var(--surface-2)" : "var(--surface)") +
-            T(t, x + 0.22, y + 0.14, 3.9, 0.26, 11, "var(--ink)", true) +
-            T(d, x + 0.22, y + 0.44, 3.98, 0.6, 8.5, "var(--muted)", false, "left", "top", 1.3);
+      // A validade fica sozinha na última linha: ocupa a largura toda.
+      const ultima = lin === 2, w = ultima ? 9.0 : 4.4;
+      cd += C(x, y, w, 1.08, ultima ? "var(--surface-2)" : "var(--surface)") +
+            T(t, x + 0.22, y + 0.14, w - 0.5, 0.26, 11, "var(--ink)", true) +
+            T(d, x + 0.22, y + 0.44, w - 0.42, 0.6, 8.5, "var(--muted)", false, "left", "top", 1.3);
     });
   cd += T("Em caso de divergência entre esta proposta e o contrato, prevalece o contrato. " +
           "As condições estão sujeitas à assinatura do contrato de licença de uso da plataforma Veilig.",
