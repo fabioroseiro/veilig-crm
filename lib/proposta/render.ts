@@ -68,7 +68,7 @@ const PILL = (t: string, x: number, y: number, w: number, h: number,
               fill: string, cor: string, size = 7.5) =>
   A(x, y, w, h, `<span>${t}</span>`,
     `background:${fill};color:${cor};border-radius:${U(h / 2)};font-size:${PT(size)};` +
-    `font-weight:700;display:flex;align-items:center;justify-content:center;line-height:1.15;`);
+    `font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.15;`);
 
 const NUM = (n: number | string, x: number, y: number, d = 0.34,
              fill = "var(--accent)", cor = "var(--ink)", size = 10) =>
@@ -215,16 +215,16 @@ function cardModelo(m: DefModelo, chave: Modelo, selecionavel: boolean,
     T(m.nome, x + 0.28, y + 0.2, 2.5, 0.38, 19, "var(--ink)", true) +
     T(m.modo, x + 0.28, y + 0.6, w - 0.9, 0.22, 9, "var(--muted)") +
     PILL(m.tag, x + w - 1.45, y + 0.22, 1.2, 0.24, "var(--accent-soft)", "var(--accent)", 6.8) +
-    T(brl(m.setup), x + 0.28, y + 0.88, 2.4, 0.44, 25, "var(--ink)", true) +
-    T(`de setup, em ${m.parcelas.length} parcelas<br>go-live em ${m.prazo.replace("cerca de ", "~")}`,
-      x + 2.45, y + 0.96, w - 2.7, 0.42, 8.5, "var(--muted)", false, "left", "top", 1.3) +
+    // Sem valores aqui: o investimento de cada formato aparece só no slide de implantação.
+    T(`${m.prazo.replace("cerca de ", "~")} até o go-live`, x + 0.28, y + 0.86, w - 0.56, 0.3, 15, "var(--ink)", true) +
+    T(`Indicado para: ${m.indicado.toLowerCase()}`, x + 0.28, y + 1.14, w - 0.56, 0.26, 8, "var(--muted)", false, "left", "top", 1.3) +
     LINE(x + 0.28, y + 1.42, w - 0.56) +
     LI(m.itens, x + 0.28, y + 1.54, w - 0.56, 9);
   if (selecionavel) {
     o += `<div class="a hit" tabindex="0" role="button" data-escolher="${chave}" ` +
       `style="left:${U(x + 0.28)};top:${U(y + h - 0.62)};width:${U(w - 0.56)};height:${U(0.42)};` +
       `background:var(--accent);color:#fff;border-radius:${U(0.07)};` +
-      `font-size:${PT(10.5)};font-weight:700;display:flex;align-items:center;justify-content:center;">` +
+      `font-size:${PT(10.5)};font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;">` +
       `<span>Quero este formato</span></div>`;
   } else {
     o += T("Formato definido para esta proposta.", x + 0.28, y + h - 0.52, w - 0.56, 0.3,
@@ -374,6 +374,67 @@ function slideResultados(a: AssetsProposta) {
   return o;
 }
 
+// ----------------------------------------------------------- cronograma do onboarding
+interface Fase { nome: string; desc: string; ini: number; fim: number; marca: string; presencial: boolean }
+
+const CRONOGRAMA: Record<Modelo, { semanas: number; fases: Fase[]; depois: string }> = {
+  consultivo: {
+    semanas: 6,
+    fases: [
+      { nome: "Kickoff e diagnóstico", desc: "Objetivos, metas e ponto focal; custos de mão de obra e peças por revisão; escopo do piloto", ini: 1, fim: 1, marca: "Presencial", presencial: true },
+      { nome: "Desenho e precificação dos planos", desc: "Workshop para no mínimo 3 planos: coberturas, tetos, carência e preço por modelo; minuta revisada pelo jurídico", ini: 2, fim: 3, marca: "Workshop", presencial: true },
+      { nome: "Parametrização e financeiro", desc: "Lojas, modelos, planos, preços e usuários; conta de recebimento e divisão do valor; comissionamento", ini: 3, fim: 4, marca: "Veilig", presencial: false },
+      { nome: "Treinamento por perfil", desc: "Grupo, gestor de loja e vendedor, com simulação de balcão: zero km, seminovo e fora da política", ini: 4, fim: 5, marca: "Presencial", presencial: true },
+      { nome: "Homologação e venda-teste", desc: "Venda real do balcão ao repasse; contrato e portal conferidos; checklist de go-live assinado", ini: 5, fim: 5, marca: "Conjunto", presencial: false },
+      { nome: "Go-live assistido", desc: "Time Veilig na loja na primeira semana de vendas", ini: 6, fim: 6, marca: "Na loja", presencial: true },
+    ],
+    depois: "Depois do go-live: 90 dias de acompanhamento, com reuniões semanais no 1º mês e quinzenais até o 90º dia, revisão de preços aos 30 dias com as vendas reais e plano de expansão para as demais lojas.",
+  },
+  online: {
+    semanas: 3,
+    fases: [
+      { nome: "Kickoff e formulário de levantamento", desc: "Sessão de 1h: objetivos, ponto focal, lojas e modelos do piloto; envio do formulário de custos", ini: 1, fim: 1, marca: "Vídeo · 1h", presencial: false },
+      { nome: "Proposta e validação dos planos", desc: "A Veilig monta 3 planos a partir dos custos informados; sessão de 1h30 para ajustar e aprovar", ini: 1.5, fim: 2, marca: "Vídeo · 1h30", presencial: false },
+      { nome: "Parametrização e conta de recebimento", desc: "A Veilig configura o ambiente; vocês abrem a conta com o nosso passo a passo", ini: 2, fim: 2.5, marca: "Veilig", presencial: false },
+      { nome: "Treinamento por perfil", desc: "Sessão ao vivo por perfil, gravada, e guia rápido de balcão para os vendedores", ini: 2.5, fim: 3, marca: "Vídeo + gravado", presencial: false },
+      { nome: "Venda-teste e go-live", desc: "Venda-teste conferida em chamada; primeira semana de vendas com suporte remoto prioritário", ini: 3, fim: 3, marca: "Suporte remoto", presencial: false },
+    ],
+    depois: "Depois do go-live: 30 dias de acompanhamento, com check-ins de resultado aos 15 e aos 30 dias e suporte pelo canal de atendimento.",
+  },
+};
+
+function slideCronograma(chave: Modelo, m: DefModelo, a: AssetsProposta) {
+  const c = CRONOGRAMA[chave];
+  let o = HEAD(`Onboarding ${m.nome}: semana a semana`, "Como funciona",
+    `${m.modo}. ${m.prazo.charAt(0).toUpperCase()}${m.prazo.slice(1)} até o go-live.`, a.logo);
+  const xg = 4.55, wg = 4.95, y0 = 1.62, lw = wg / c.semanas;
+  const h = c.fases.length > 5 ? 0.5 : 0.58;
+  // Cabeçalho das semanas
+  for (let s = 0; s < c.semanas; s++)
+    o += T(`Semana ${s + 1}`, xg + s * lw, y0, lw, 0.24, 7.5, "var(--muted)", true, "center", "middle");
+  c.fases.forEach((_, i) => { if (i % 2 === 0) o += A(0.5, y0 + 0.3 + i * h, 9.0, h, "", "background:var(--surface-2);"); });
+  for (let s = 1; s < c.semanas; s++) o += A(xg + s * lw, y0 + 0.3, 0.0075, c.fases.length * h, "", "background:var(--border);");
+  c.fases.forEach((f, i) => {
+    const y = y0 + 0.3 + i * h;
+    o += NUM(i + 1, 0.6, y + (h - 0.28) / 2, 0.28, "var(--accent)", "var(--ink)", 8.5) +
+      T(f.nome, 1.0, y + 0.04, 3.45, 0.2, 8.6, "var(--ink)", true) +
+      T(f.desc, 1.0, y + 0.22, 3.45, h - 0.24, 6.7, "var(--muted)", false, "left", "top", 1.25);
+    const bx = xg + (f.ini - 1) * lw + 0.04, bw = (f.fim - f.ini + 1) * lw - 0.08;
+    o += A(bx, y + h / 2 - 0.13, Math.max(bw, lw * 0.5 - 0.08), 0.26, `<span>${f.marca}</span>`,
+      `background:${f.presencial ? "var(--ink)" : "var(--accent)"};color:${f.presencial ? "#fff" : "var(--ink)"};` +
+      `border-radius:${U(0.13)};font-size:${PT(7)};font-weight:700;display:flex;align-items:center;justify-content:center;text-align:center;white-space:nowrap;`);
+  });
+  const yf = y0 + 0.3 + c.fases.length * h + 0.12;
+  o += C(0.5, yf, 9.0, 0.5, "var(--accent-soft)", "var(--accent)") +
+    T(c.depois, 0.7, yf, 8.6, 0.5, 8.2, "var(--ink)", false, "left", "middle", 1.3);
+  if (c.fases.some((f) => f.presencial))
+    o += A(0.6, y0 + 0.07, 0.16, 0.1, "", "background:var(--ink);border-radius:3px;") +
+      T("Marco presencial", 0.82, y0, 1.3, 0.24, 7, "var(--muted)", false, "left", "middle") +
+      A(2.05, y0 + 0.07, 0.16, 0.1, "", "background:var(--accent);border-radius:3px;") +
+      T("Etapa remota", 2.27, y0, 1.3, 0.24, 7, "var(--muted)", false, "left", "middle");
+  return o;
+}
+
 /** Só entra quando o grupo ainda vai escolher o modelo. */
 function slideComparativo(a: AssetsProposta) {
   let o = HEAD("Os dois modelos, lado a lado", "A decisão do grupo",
@@ -459,6 +520,9 @@ export function renderProposta(e: EntradaProposta, meta: MetaProposta, assets: A
   }
   sl.push({ id: "onboarding", cls: "", html: impl });
   if (escolha) sl.push({ id: "comparativo", cls: "", html: slideComparativo(assets) });
+  // Cronograma semana a semana de cada formato em jogo (sem valores: eles ficam no investimento).
+  for (const k of (escolha ? ["consultivo", "online"] : [ativo]) as Modelo[])
+    sl.push({ id: `cronograma-${k}`, cls: "", html: slideCronograma(k, M[k], assets) });
 
   // ---- projeção
   const etapas: [string, string, string][] = [
